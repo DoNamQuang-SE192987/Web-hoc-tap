@@ -63,7 +63,9 @@ export default function LoginPage() {
       return;
     }
 
-    const redirectUri = 'http://localhost:3000/login';
+    const redirectUri = typeof window !== 'undefined' 
+      ? `${window.location.origin}/login` 
+      : 'http://localhost:3000/login';
     const scope = 'openid email profile';
     const responseType = 'id_token';
     const nonce = Math.random().toString(36).substring(2);
