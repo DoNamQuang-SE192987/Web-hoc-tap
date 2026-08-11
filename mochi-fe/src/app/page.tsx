@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -84,16 +85,29 @@ export default function Dashboard() {
   const [failedCardIds, setFailedCardIds] = useState<string[]>([]);
   const [isRetryPhase, setIsRetryPhase] = useState<boolean>(false);
 
+  // User Settings states (timezone, notifyTime)
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [notifyTime, setNotifyTime] = useState('08:00');
+  const [timezone, setTimezone] = useState('GMT+7');
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+
   // Load User and Decks
   useEffect(() => {
     const token = localStorage.getItem('token');
     const storedUser = localStorage.getItem('user');
-    if (!token || !storedUser) {
-      router.push('/login');
-      return;
+    if (token && storedUser) {
+      const parsedUser = JSON.parse(storedUser);
+      setUser(parsedUser);
+
+      if (parsedUser.notifyTime) {
+        setNotifyTime(parsedUser.notifyTime.substring(0, 5));
+      }
+      if (parsedUser.timezone) {
+        setTimezone(parsedUser.timezone);
+      }
+
+      fetchData();
     }
-    setUser(JSON.parse(storedUser));
-    fetchData();
   }, []);
 
   // Golden Time countdown simulator (for demo purposes)
@@ -172,6 +186,22 @@ export default function Dashboard() {
     }
   };
 
+  const handleDeleteDeck = async (deckId: string) => {
+    if (!window.confirm('Bạn có chắc chắn muốn xóa chủ đề này? Tất cả các từ vựng và tiến trình học liên quan sẽ bị xóa!')) {
+      return;
+    }
+
+    try {
+      const res: any = await api.delete(`/api/decks/${deckId}`);
+      if (res.success) {
+        fetchData();
+      }
+    } catch (err) {
+      console.error('Lỗi khi xóa chủ đề:', err);
+      alert('Không thể xóa chủ đề này.');
+    }
+  };
+
   const handleSelectDeck = async (deck: Deck) => {
     setSelectedDeck(deck);
     try {
@@ -209,11 +239,39 @@ export default function Dashboard() {
     }
   };
 
+  const handleSaveSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingSettings(true);
+    try {
+      const res: any = await api.put('/api/users/notify-settings', {
+        notifyTime,
+        timezone
+      });
+      if (res.success) {
+        alert('Đã cập nhật giờ nhắc nhở thành công! Hệ thống đã gửi email xác nhận đến hòm thư của bạn.');
+        setIsSettingsOpen(false);
+        
+        // Cập nhật lại user trong localStorage
+        const updatedUser = { ...user, notifyTime, timezone };
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        setUser(updatedUser);
+      } else {
+        alert(res.message || 'Cập nhật thất bại.');
+      }
+    } catch (err: any) {
+      console.error('Lỗi khi lưu cài đặt:', err);
+      alert(err.message || 'Không thể lưu cài đặt.');
+    } finally {
+      setIsSavingSettings(false);
+    }
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('last_session_time');
-    router.push('/login');
+    setUser(null);
+    router.push('/');
   };
 
   // Tính tổng số từ đã học (tổng số learnedCards của user)
@@ -338,6 +396,117 @@ export default function Dashboard() {
 
   const currentCard = deckCards[learningIndex];
 
+  // RENDER LANDING PAGE NẾU CHƯA ĐĂNG NHẬP
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-background text-foreground flex flex-col font-sans">
+        {/* Header Landing Page */}
+        <header className="border-b border-border bg-card sticky top-0 z-50 px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="bg-primary p-2.5 rounded-xl shadow-sm text-white">
+              <BookOpen className="h-6 w-6" />
+            </div>
+            <span className="text-2xl font-extrabold bg-gradient-to-r from-primary to-indigo-600 bg-clip-text text-transparent">
+              Mochi SRS
+            </span>
+          </div>
+          
+          <div className="flex items-center space-x-4">
+            <Link 
+              href="/login"
+              className="text-sm font-bold text-muted-foreground hover:text-foreground font-sans px-3 py-2 rounded-xl transition"
+            >
+              Đăng nhập
+            </Link>
+            <Link 
+              href="/login"
+              className="bg-primary hover:bg-primary/95 text-white font-bold px-5 py-2.5 rounded-xl shadow-sm text-sm font-sans flex items-center justify-center transition"
+            >
+              Bắt đầu học ngay 🚀
+            </Link>
+          </div>
+        </header>
+
+        {/* Hero Section */}
+        <section className="flex-1 max-w-5xl w-full mx-auto px-6 py-20 flex flex-col items-center justify-center text-center space-y-10 relative">
+          <div className="absolute top-10 left-10 w-72 h-72 bg-primary/5 rounded-full blur-3xl -z-10" />
+          <div className="absolute bottom-10 right-10 w-72 h-72 bg-indigo-500/5 rounded-full blur-3xl -z-10" />
+
+          <div className="space-y-4">
+            <div className="inline-flex items-center space-x-2 bg-primary/5 border border-primary/10 px-4 py-1.5 rounded-full text-primary text-xs font-black uppercase tracking-wider">
+              <span>💡 Ghi nhớ 1000 từ vựng với Spaced Repetition</span>
+            </div>
+            <h1 className="text-4xl md:text-6xl font-black tracking-tight leading-tight max-w-3xl mx-auto">
+              Học thông minh hơn mỗi ngày với{' '}
+              <span className="bg-gradient-to-r from-primary to-indigo-600 bg-clip-text text-transparent">
+                Mochi SRS
+              </span>
+            </h1>
+            <p className="text-base md:text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed">
+              Ứng dụng ghi nhớ từ vựng tiếng Anh áp dụng thuật toán Lặp lại ngắt quãng (SM-2), tự động tính toán thời điểm vàng ôn tập tốt nhất cho trí não.
+            </p>
+          </div>
+
+          {/* CTA Buttons */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full max-w-md">
+            <Link 
+              href="/login"
+              className="w-full sm:w-auto bg-primary hover:bg-primary/95 text-white font-black py-4 px-10 rounded-2xl text-base shadow-lg transition-transform hover:scale-[1.02] active:scale-[0.98] font-sans flex items-center justify-center"
+            >
+              Vào Học Từ Vựng Ngay
+            </Link>
+            <Link 
+              href="/register"
+              className="w-full sm:w-auto border border-border hover:bg-muted text-foreground font-black py-4 px-10 rounded-2xl text-base transition-transform hover:scale-[1.02] font-sans flex items-center justify-center"
+            >
+              Đăng ký tài khoản
+            </Link>
+          </div>
+
+          {/* Feature Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full pt-10">
+            <div className="p-8 bg-card border border-border rounded-3xl text-left space-y-4 shadow-sm relative overflow-hidden">
+              <div className="w-12 h-12 bg-primary/10 text-primary rounded-2xl flex items-center justify-center text-xl font-bold">
+                ⏰
+              </div>
+              <h3 className="text-lg font-bold">Thời điểm vàng</h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Hệ thống đếm ngược 30 phút sau khi học từ mới và tự động gửi thông báo qua email nhắc nhở ôn tập vào đúng lúc khả năng ghi nhớ tốt nhất.
+              </p>
+            </div>
+
+            <div className="p-8 bg-card border border-border rounded-3xl text-left space-y-4 shadow-sm relative overflow-hidden">
+              <div className="w-12 h-12 bg-amber-500/10 text-amber-600 rounded-2xl flex items-center justify-center text-xl font-bold">
+                📊
+              </div>
+              <h3 className="text-lg font-bold">5 Cấp độ Ghi nhớ</h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Toàn bộ từ vựng được tự động xếp vào 5 cấp độ từ "Mới học" đến "Nhớ sâu". Biểu đồ trực quan giúp bạn nắm rõ tiến trình học tập mỗi ngày.
+              </p>
+            </div>
+
+            <div className="p-8 bg-card border border-border rounded-3xl text-left space-y-4 shadow-sm relative overflow-hidden">
+              <div className="w-12 h-12 bg-green-500/10 text-green-600 rounded-2xl flex items-center justify-center text-xl font-bold">
+                🎧
+              </div>
+              <h3 className="text-lg font-bold">Học Đa Giác Quan</h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Tích hợp phát âm thường, phát âm chậm 🐌 bằng giọng đọc bản xứ. Kết hợp bước Viết chính tả và Điền từ khuyết giúp bạn nhớ lâu gấp 4 lần.
+              </p>
+            </div>
+          </div>
+
+        </section>
+
+        {/* Footer */}
+        <footer className="border-t border-border py-8 text-center text-xs text-muted-foreground bg-card">
+          <p>© {new Date().getFullYear()} Mochi SRS. Tất cả quyền được bảo lưu. Thiết kế và phát triển dựa trên Spaced Repetition.</p>
+        </footer>
+      </div>
+    );
+  }
+
+  // RENDER DASHBOARD NẾU ĐÃ ĐĂNG NHẬP
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col font-sans pb-10">
       {/* Header căn giữa ngang hàng logo */}
@@ -390,22 +559,91 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Cột phải: Profile */}
-        <div className="flex justify-end items-center">
+        {/* Cột phải: Settings & Profile */}
+        <div className="flex justify-end items-center space-x-3">
           {user && (
-            <div className="flex items-center space-x-3 bg-muted border border-border rounded-full pl-3 pr-2 py-1">
-              <span className="text-sm font-bold text-muted-foreground">
-                {user.displayName}
-              </span>
-              <Button
-                onClick={handleLogout}
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-muted-foreground hover:text-red-500 rounded-full"
-              >
-                <LogOut className="h-4 w-4" />
-              </Button>
-            </div>
+            <>
+              {/* Nút Cài đặt nhắc nhở */}
+              <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+                <DialogTrigger render={
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="h-9 px-3 border-border hover:bg-muted font-sans text-xs font-bold rounded-xl flex items-center space-x-1.5"
+                  >
+                    <Clock className="h-3.5 w-3.5 text-primary animate-pulse" />
+                    <span>⏰ Nhắc nhở</span>
+                  </Button>
+                } />
+                <DialogContent className="bg-card border-border text-foreground">
+                  <form onSubmit={handleSaveSettings}>
+                    <DialogHeader>
+                      <DialogTitle className="text-left">Cài đặt giờ nhắc nhở ôn tập</DialogTitle>
+                      <DialogDescription className="text-muted-foreground text-xs font-sans text-left">
+                        Chọn thời gian hàng ngày và múi giờ để hệ thống gửi email thông báo trực tiếp.
+                      </DialogDescription>
+                    </DialogHeader>
+                    
+                    <div className="space-y-4 py-4 text-left">
+                      <div className="space-y-2">
+                        <Label htmlFor="notifyTime">Giờ nhắc nhở hàng ngày</Label>
+                        <Input
+                          id="notifyTime"
+                          type="time"
+                          value={notifyTime}
+                          onChange={(e) => setNotifyTime(e.target.value)}
+                          className="bg-background border-border"
+                          required
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="timezone">Múi giờ của bạn</Label>
+                        <select
+                          id="timezone"
+                          value={timezone}
+                          onChange={(e) => setTimezone(e.target.value)}
+                          className="w-full bg-background border border-border text-foreground rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                          required
+                        >
+                          <option value="GMT+7">GMT+7 (Hà Nội, Băng Cốc)</option>
+                          <option value="GMT+8">GMT+8 (Singapore, Bắc Kinh)</option>
+                          <option value="GMT+9">GMT+9 (Tokyo, Seoul)</option>
+                          <option value="GMT+0">GMT+0 (London, UTC)</option>
+                          <option value="GMT-5">GMT-5 (New York, EST)</option>
+                          <option value="GMT-8">GMT-8 (Los Angeles, PST)</option>
+                        </select>
+                      </div>
+                    </div>
+                    
+                    <DialogFooter>
+                      <Button 
+                        type="submit" 
+                        disabled={isSavingSettings}
+                        className="bg-primary hover:bg-primary/95 text-white font-sans"
+                      >
+                        {isSavingSettings ? 'Đang lưu...' : 'Lưu & Nhận Email'}
+                      </Button>
+                    </DialogFooter>
+                  </form>
+                </DialogContent>
+              </Dialog>
+
+              {/* Thông tin User */}
+              <div className="flex items-center space-x-3 bg-muted border border-border rounded-full pl-3 pr-2 py-1">
+                <span className="text-sm font-bold text-muted-foreground">
+                  {user.displayName}
+                </span>
+                <Button
+                  onClick={handleLogout}
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-red-500 rounded-full"
+                >
+                  <LogOut className="h-4 w-4" />
+                </Button>
+              </div>
+            </>
           )}
         </div>
       </header>
@@ -438,7 +676,7 @@ export default function Dashboard() {
                 {/* Banner quảng cáo nhỏ giống Mochi mẫu */}
                 <div className="w-full bg-amber-50 border border-amber-200 rounded-2xl p-3.5 flex items-center justify-between text-xs text-amber-800">
                   <span className="font-bold text-left">✨ Tranh thủ mở khóa trọn bộ từ vựng Mochi để bứt phá từ vựng!</span>
-                  <span className="bg-amber-500 text-white px-2 py-0.5 rounded font-black hover:bg-amber-600 cursor-pointer">MỞ NGAY</span>
+                  <span className="bg-amber-500 text-white px-2 py-0.5 rounded font-black hover:bg-amber-600 cursor-pointer font-sans">MỞ NGAY</span>
                 </div>
 
                 <div className="text-center">
@@ -481,12 +719,13 @@ export default function Dashboard() {
                   </p>
                   
                   {dueCardsCount > 0 ? (
-                    <Button 
-                      onClick={() => router.push('/review')}
-                      className="w-full max-w-xs bg-green-600 hover:bg-green-500 text-white font-bold py-6 rounded-2xl text-lg shadow-md hover:scale-[1.02] active:scale-[0.98] transition-transform font-sans"
-                    >
-                      Ôn tập ngay
-                    </Button>
+                    <Link href="/review" className="w-full max-w-xs">
+                      <Button 
+                        className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-6 rounded-2xl text-lg shadow-md hover:scale-[1.02] active:scale-[0.98] transition-transform font-sans"
+                      >
+                        Ôn tập ngay
+                      </Button>
+                    </Link>
                   ) : (
                     <div className="flex items-center justify-center space-x-2 text-emerald-600 bg-emerald-50 border border-emerald-200 px-5 py-3.5 rounded-2xl max-w-md mx-auto">
                       <CheckCircle className="h-5 w-5" />
@@ -1063,6 +1302,20 @@ export default function Dashboard() {
                             </div>
                             <div className="flex items-center space-x-3 text-xs text-muted-foreground font-semibold">
                               <span className="bg-primary/5 border border-primary/10 px-2.5 py-1 rounded-xl text-primary">{deck.cardCount} từ vựng</span>
+                              {user?.role === 'ROLE_ADMIN' && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteDeck(deck.id);
+                                  }}
+                                  className="h-8 w-8 text-muted-foreground hover:text-red-500 rounded-xl hover:bg-red-50"
+                                  title="Xóa chủ đề này"
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              )}
                             </div>
                           </div>
                         );

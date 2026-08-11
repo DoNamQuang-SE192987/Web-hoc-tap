@@ -12,4 +12,8 @@ public interface CardRepository extends JpaRepository<Card, UUID> {
     
     // Lấy danh sách tất cả các Card trong một Deck
     List<Card> findByDeckId(UUID deckId);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query("DELETE FROM Card c WHERE c.deck.id = :deckId")
+    void deleteByDeckId(@org.springframework.data.repository.query.Param("deckId") UUID deckId);
 }

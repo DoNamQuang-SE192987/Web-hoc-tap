@@ -42,4 +42,31 @@ public class NotificationService {
             log.error("Lỗi khi gửi email tới {}: {}", toEmail, e.getMessage());
         }
     }
+
+    public void sendNotificationSettingsConfirmationEmail(String toEmail, String displayName, String notifyTime, String timezone) {
+        String subject = "⏰ Cài đặt nhắc nhở học tập thành công!";
+        String body = String.format(
+            "Chào %s,\n\n" +
+            "Bạn đã cài đặt mốc thời gian nhắc nhở học tập hàng ngày vào lúc %s (Múi giờ: %s) thành công.\n" +
+            "Chúng tôi sẽ gửi email nhắc nhở học tập cho bạn vào khung giờ này mỗi ngày nếu bạn có thẻ cần ôn tập.\n\n" +
+            "Chúc bạn học tập hiệu quả!\n" +
+            "Flashcard SRS Team",
+            displayName != null ? displayName : "bạn",
+            notifyTime,
+            timezone
+        );
+
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(toEmail);
+        message.setSubject(subject);
+        message.setText(body);
+        message.setFrom("noreply@flashcard-srs.com");
+
+        try {
+            mailSender.send(message);
+            log.info("Đã gửi email xác nhận cài đặt nhắc nhở tới {}", toEmail);
+        } catch (Exception e) {
+            log.error("Lỗi khi gửi email tới {}: {}", toEmail, e.getMessage());
+        }
+    }
 }
