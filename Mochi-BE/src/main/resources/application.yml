@@ -3,9 +3,9 @@ spring:
     name: srs
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/flashcard_srs
-    username: srs_user
-    password: srs_password
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/flashcard_srs}
+    username: ${SPRING_DATASOURCE_USERNAME:srs_user}
+    password: ${SPRING_DATASOURCE_PASSWORD:srs_password}
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -20,8 +20,8 @@ spring:
 
   data:
     redis:
-      host: localhost
-      port: 6379
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
 
   # Cấu hình Spring Mail (Dùng SMTP Gmail hoặc test SMTP tùy ý, ở đây tôi dùng cấu hình mẫu)
   mail:
