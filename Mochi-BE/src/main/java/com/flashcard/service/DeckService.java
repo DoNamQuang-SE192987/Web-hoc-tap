@@ -20,6 +20,9 @@ public class DeckService {
 
     private final DeckRepository deckRepository;
     private final UserRepository userRepository;
+    private final com.flashcard.repository.CardRepository cardRepository;
+    private final com.flashcard.repository.CardProgressRepository cardProgressRepository;
+    private final com.flashcard.repository.ReviewLogRepository reviewLogRepository;
 
     public DeckResponse createDeck(String userEmail, DeckRequest request) {
         User user = userRepository.findByEmail(userEmail)
@@ -60,12 +63,29 @@ public class DeckService {
         return mapToResponse(deck);
     }
 
+    @org.springframework.transaction.annotation.Transactional
     public void deleteDeck(UUID deckId, String userEmail) {
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
         Deck deck = deckRepository.findById(deckId)
                 .orElseThrow(() -> new ResourceNotFoundException("Deck not found"));
 
-        if (!deck.getUser().getEmail().equals(userEmail)) {
+        // Admin có quyền xóa bất kỳ deck nào, user thường chỉ được xóa deck của mình
+        if (!deck.getUser().getEmail().equals(userEmail) && user.getRole() != com.flashcard.entity.Role.ROLE_ADMIN) {
             throw new RuntimeException("Bạn không có quyền xóa Deck này");
+        }
+
+        // Tìm tất cả cards của deck để xóa progress và logs
+        List<com.flashcard.entity.Card> cards = cardRepository.findByDeckId(deckId);
+        if (!cards.isEmpty()) {
+            List<UUID> cardIds = cards.stream()
+                    .map(com.flashcard.entity.Card::getId)
+                    .collect(Collectors.toList());
+            
+            reviewLogRepository.deleteByCardIds(cardIds);
+            cardProgressRepository.deleteByCardIds(cardIds);
+            cardRepository.deleteByDeckId(deckId);
         }
 
         deckRepository.delete(deck);

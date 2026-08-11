@@ -6,6 +6,7 @@ com\flashcard\exception\GlobalExceptionHandler.class
 com\flashcard\security\UserDetailsServiceImpl.class
 com\flashcard\dto\request\RegisterRequest.class
 com\flashcard\dto\response\ApiResponse$ApiResponseBuilder.class
+com\flashcard\dto\request\GoogleLoginRequest.class
 com\flashcard\entity\Deck$DeckBuilder.class
 com\flashcard\dto\response\CardProgressResponse.class
 com\flashcard\controller\DeckController.class
@@ -13,6 +14,7 @@ com\flashcard\dto\request\CardRequest.class
 com\flashcard\dto\response\DeckResponse.class
 com\flashcard\security\JwtUtil.class
 com\flashcard\controller\CardController.class
+com\flashcard\controller\UserController.class
 com\flashcard\dto\response\CardResponse$CardResponseBuilder.class
 com\flashcard\entity\Role.class
 com\flashcard\dto\response\DeckResponse$DeckResponseBuilder.class
@@ -32,6 +34,7 @@ com\flashcard\repository\ReviewLogRepository.class
 com\flashcard\service\AuthService.class
 com\flashcard\entity\CardProgress.class
 com\flashcard\repository\UserRepository.class
+com\flashcard\dto\request\NotifySettingsRequest.class
 com\flashcard\config\SecurityConfig.class
 com\flashcard\service\NotificationService.class
 com\flashcard\security\JwtFilter.class
