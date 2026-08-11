@@ -47,7 +47,13 @@ public class SecurityConfig {
     @Bean
     public org.springframework.web.cors.CorsConfigurationSource corsConfigurationSource() {
         org.springframework.web.cors.CorsConfiguration configuration = new org.springframework.web.cors.CorsConfiguration();
-        configuration.setAllowedOrigins(java.util.List.of("http://localhost:3000")); // Địa chỉ FE
+        configuration.setAllowedOriginPatterns(java.util.List.of(
+            "http://localhost:3000",
+            "https://web-hoc-tap-six.vercel.app",
+            "https://*.vercel.app",
+            "https://tuvung.cornmilk.com",
+            "http://tuvung.cornmilk.com"
+        ));
         configuration.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(java.util.List.of("Authorization", "Content-Type", "Accept", "X-Requested-With"));
         configuration.setExposedHeaders(java.util.List.of("Authorization"));
