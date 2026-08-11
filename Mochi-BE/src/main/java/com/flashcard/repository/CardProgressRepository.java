@@ -38,4 +38,8 @@ public interface CardProgressRepository extends JpaRepository<CardProgress, UUID
            "JOIN FETCH cp.card c " +
            "WHERE cp.user.id = :userId")
     List<CardProgress> findByUserId(@Param("userId") UUID userId);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("DELETE FROM CardProgress cp WHERE cp.card.id IN :cardIds")
+    void deleteByCardIds(@Param("cardIds") List<UUID> cardIds);
 }

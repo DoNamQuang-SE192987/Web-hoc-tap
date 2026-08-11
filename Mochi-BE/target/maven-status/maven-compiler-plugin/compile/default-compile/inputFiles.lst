@@ -7,6 +7,7 @@ D:\Project mochi\Mochi-BE\src\main\java\com\flashcard\dto\response\DeckResponse.
 D:\Project mochi\Mochi-BE\src\main\java\com\flashcard\exception\ResourceNotFoundException.java
 D:\Project mochi\Mochi-BE\src\main\java\com\flashcard\scheduler\NotificationScheduler.java
 D:\Project mochi\Mochi-BE\src\main\java\com\flashcard\entity\ReviewLog.java
+D:\Project mochi\Mochi-BE\src\main\java\com\flashcard\dto\request\GoogleLoginRequest.java
 D:\Project mochi\Mochi-BE\src\main\java\com\flashcard\dto\request\ReviewRequest.java
 D:\Project mochi\Mochi-BE\src\main\java\com\flashcard\entity\Deck.java
 D:\Project mochi\Mochi-BE\src\main\java\com\flashcard\dto\request\RegisterRequest.java
@@ -21,6 +22,7 @@ D:\Project mochi\Mochi-BE\src\main\java\com\flashcard\security\UserDetailsServic
 D:\Project mochi\Mochi-BE\src\main\java\com\flashcard\controller\ReviewController.java
 D:\Project mochi\Mochi-BE\src\main\java\com\flashcard\dto\request\CardRequest.java
 D:\Project mochi\Mochi-BE\src\main\java\com\flashcard\dto\request\LoginRequest.java
+D:\Project mochi\Mochi-BE\src\main\java\com\flashcard\controller\UserController.java
 D:\Project mochi\Mochi-BE\src\main\java\com\flashcard\dto\request\DeckRequest.java
 D:\Project mochi\Mochi-BE\src\main\java\com\flashcard\dto\response\CardResponse.java
 D:\Project mochi\Mochi-BE\src\main\java\com\flashcard\controller\CardController.java
@@ -34,6 +36,7 @@ D:\Project mochi\Mochi-BE\src\main\java\com\flashcard\config\SwaggerConfig.java
 D:\Project mochi\Mochi-BE\src\main\java\com\flashcard\service\CardService.java
 D:\Project mochi\Mochi-BE\src\main\java\com\flashcard\repository\DeckRepository.java
 D:\Project mochi\Mochi-BE\src\main\java\com\flashcard\service\SrsService.java
+D:\Project mochi\Mochi-BE\src\main\java\com\flashcard\dto\request\NotifySettingsRequest.java
 D:\Project mochi\Mochi-BE\src\main\java\com\flashcard\service\NotificationService.java
 D:\Project mochi\Mochi-BE\src\main\java\com\flashcard\repository\CardRepository.java
 D:\Project mochi\Mochi-BE\src\main\java\com\flashcard\security\JwtUtil.java
