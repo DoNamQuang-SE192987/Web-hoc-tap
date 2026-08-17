@@ -121,7 +121,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-md border-border bg-card text-foreground shadow-lg relative z-10">
         <CardHeader className="space-y-1 text-center">
           <CardTitle className="text-3xl font-bold bg-gradient-to-r from-primary to-indigo-600 bg-clip-text text-transparent">
-            Mochi Flashcard
+            CornMilk
           </CardTitle>
           <CardDescription className="text-muted-foreground text-xs font-sans">
             Học thông minh hơn mỗi ngày với Spaced Repetition

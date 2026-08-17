@@ -19,7 +19,7 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Mochi Flashcard - Spaced Repetition App",
+  title: "CornMilk - Spaced Repetition Flashcard App",
   description: "Ứng dụng học từ vựng thông minh dựa trên thuật toán SM-2 Spaced Repetition",
 };
 

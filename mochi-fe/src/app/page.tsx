@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { BookOpen, Flame, LogOut, Plus, Star, Folder, AlertCircle, Clock, CheckCircle, Volume2, X, ChevronLeft, Image as ImageIcon } from 'lucide-react';
+import { BookOpen, Flame, LogOut, Plus, Star, Folder, AlertCircle, Clock, CheckCircle, Volume2, X, ChevronLeft, Image as ImageIcon, Pencil, Trash2 } from 'lucide-react';
 
 interface Deck {
   id: string;
@@ -24,6 +24,7 @@ interface Deck {
 
 interface CardType {
   id: string;
+  deckId?: string;
   front: string;
   back: string;
   exampleSentence?: string;
@@ -57,6 +58,15 @@ export default function Dashboard() {
   const [back, setBack] = useState('');
   const [pronunciation, setPronunciation] = useState('');
   const [example, setExample] = useState('');
+
+  // States for Admin editing card
+  const [editingCard, setEditingCard] = useState<CardType | null>(null);
+  const [editFront, setEditFront] = useState('');
+  const [editBack, setEditBack] = useState('');
+  const [editPronunciation, setEditPronunciation] = useState('');
+  const [editExample, setEditExample] = useState('');
+  const [isEditingCardDialogOpen, setIsEditingCardDialogOpen] = useState(false);
+  const [isSavingCard, setIsSavingCard] = useState(false);
 
   // States for countdown (Golden Time 30-min alert)
   const [goldenTimeLeft, setGoldenTimeLeft] = useState<string | null>(null);
@@ -132,6 +142,23 @@ export default function Dashboard() {
 
   const fetchData = async () => {
     try {
+      // Sync user profile from backend
+      try {
+        const userRes: any = await api.get('/api/users/me');
+        if (userRes.success && userRes.data) {
+          setUser(userRes.data);
+          if (userRes.data.notifyTime) {
+            setNotifyTime(userRes.data.notifyTime.substring(0, 5));
+          }
+          if (userRes.data.timezone) {
+            setTimezone(userRes.data.timezone);
+          }
+          localStorage.setItem('user', JSON.stringify(userRes.data));
+        }
+      } catch (userErr) {
+        // Fallback silently if not authenticated
+      }
+
       // Fetch all decks
       const decksRes: any = await api.get('/api/decks');
       if (decksRes.success) {
@@ -150,6 +177,7 @@ export default function Dashboard() {
       if (learnedRes.success) {
         setLearnedCards(learnedRes.data.map((c: any) => ({
           id: c.cardId,
+          deckId: c.deckId,
           front: c.front,
           back: c.back,
           pronunciation: c.pronunciation || '',
@@ -231,11 +259,94 @@ export default function Dashboard() {
         setBack('');
         setPronunciation('');
         setExample('');
-        handleSelectDeck(currentDeck);
+        // Reload cards for current deck
+        const cardsRes: any = await api.get(`/api/decks/${currentDeck.id}/cards`);
+        if (cardsRes.success) {
+          setDeckCards(cardsRes.data);
+        }
         fetchData();
       }
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleOpenEditCard = (card: CardType) => {
+    setEditingCard(card);
+    setEditFront(card.front);
+    setEditBack(card.back);
+    setEditPronunciation(card.pronunciation || '');
+    setEditExample(card.exampleSentence || '');
+    setIsEditingCardDialogOpen(true);
+  };
+
+  const handleSaveEditCard = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCard) return;
+    const targetDeckId = editingCard.deckId || viewingExploreDeck?.id || selectedDeck?.id;
+    if (!targetDeckId) {
+      alert('Không xác định được chủ đề của từ vựng này.');
+      return;
+    }
+
+    setIsSavingCard(true);
+    try {
+      const res: any = await api.put(`/api/decks/${targetDeckId}/cards/${editingCard.id}`, {
+        front: editFront,
+        back: editBack,
+        pronunciation: editPronunciation,
+        exampleSentence: editExample,
+      });
+
+      if (res.success) {
+        // Cập nhật state deckCards
+        setDeckCards(prev => prev.map(c => c.id === editingCard.id ? {
+          ...c,
+          front: editFront,
+          back: editBack,
+          pronunciation: editPronunciation,
+          exampleSentence: editExample,
+        } : c));
+
+        // Cập nhật state learnedCards
+        setLearnedCards(prev => prev.map(c => c.id === editingCard.id ? {
+          ...c,
+          front: editFront,
+          back: editBack,
+          pronunciation: editPronunciation,
+          exampleSentence: editExample,
+        } : c));
+
+        setIsEditingCardDialogOpen(false);
+        setEditingCard(null);
+      } else {
+        alert(res.message || 'Không thể cập nhật thẻ.');
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || 'Lỗi khi cập nhật thẻ.');
+    } finally {
+      setIsSavingCard(false);
+    }
+  };
+
+  const handleDeleteCard = async (cardId: string, customDeckId?: string) => {
+    const targetDeckId = customDeckId || viewingExploreDeck?.id || selectedDeck?.id;
+    if (!targetDeckId) return;
+    if (!window.confirm('Bạn có chắc chắn muốn xóa từ vựng này không?')) return;
+
+    try {
+      const res: any = await api.delete(`/api/decks/${targetDeckId}/cards/${cardId}`);
+      if (res.success) {
+        setDeckCards(prev => prev.filter(c => c.id !== cardId));
+        setLearnedCards(prev => prev.filter(c => c.id !== cardId));
+        fetchData();
+      } else {
+        alert(res.message || 'Không thể xóa thẻ.');
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || 'Lỗi khi xóa thẻ.');
     }
   };
 
@@ -407,7 +518,7 @@ export default function Dashboard() {
               <BookOpen className="h-6 w-6" />
             </div>
             <span className="text-2xl font-extrabold bg-gradient-to-r from-primary to-indigo-600 bg-clip-text text-transparent">
-              Mochi SRS
+              CornMilk
             </span>
           </div>
           
@@ -439,7 +550,7 @@ export default function Dashboard() {
             <h1 className="text-4xl md:text-6xl font-black tracking-tight leading-tight max-w-3xl mx-auto">
               Học thông minh hơn mỗi ngày với{' '}
               <span className="bg-gradient-to-r from-primary to-indigo-600 bg-clip-text text-transparent">
-                Mochi SRS
+                CornMilk
               </span>
             </h1>
             <p className="text-base md:text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed">
@@ -500,7 +611,7 @@ export default function Dashboard() {
 
         {/* Footer */}
         <footer className="border-t border-border py-8 text-center text-xs text-muted-foreground bg-card">
-          <p>© {new Date().getFullYear()} Mochi SRS. Tất cả quyền được bảo lưu. Thiết kế và phát triển dựa trên Spaced Repetition.</p>
+          <p>© {new Date().getFullYear()} CornMilk. Tất cả quyền được bảo lưu. Thiết kế và phát triển dựa trên Spaced Repetition.</p>
         </footer>
       </div>
     );
@@ -517,7 +628,7 @@ export default function Dashboard() {
             <BookOpen className="h-6 w-6" />
           </div>
           <span className="text-2xl font-extrabold bg-gradient-to-r from-primary to-indigo-600 bg-clip-text text-transparent">
-            Mochi SRS
+            CornMilk
           </span>
         </div>
 
@@ -673,9 +784,9 @@ export default function Dashboard() {
               <div className="bg-card border border-border rounded-3xl p-8 shadow-sm flex flex-col items-center space-y-8 relative overflow-hidden">
                 <div className="absolute top-0 right-0 h-40 w-40 bg-primary/5 rounded-full blur-3xl" />
                 
-                {/* Banner quảng cáo nhỏ giống Mochi mẫu */}
+                {/* Banner quảng cáo nhỏ */}
                 <div className="w-full bg-amber-50 border border-amber-200 rounded-2xl p-3.5 flex items-center justify-between text-xs text-amber-800">
-                  <span className="font-bold text-left">✨ Tranh thủ mở khóa trọn bộ từ vựng Mochi để bứt phá từ vựng!</span>
+                  <span className="font-bold text-left">✨ Tranh thủ mở khóa trọn bộ từ vựng CornMilk để bứt phá từ vựng!</span>
                   <span className="bg-amber-500 text-white px-2 py-0.5 rounded font-black hover:bg-amber-600 cursor-pointer font-sans">MỞ NGAY</span>
                 </div>
 
@@ -1152,11 +1263,18 @@ export default function Dashboard() {
 
                     {/* Danh sách từ vựng hiện có */}
                     <div className="space-y-3 text-left">
-                      <h3 className="font-extrabold text-sm text-foreground text-left">Danh sách từ vựng ({deckCards.length} từ)</h3>
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-extrabold text-sm text-foreground text-left">Danh sách từ vựng ({deckCards.length} từ)</h3>
+                        {user?.role === 'ROLE_ADMIN' && (
+                          <span className="text-[11px] bg-primary/10 text-primary font-bold px-2 py-0.5 rounded-md border border-primary/20">
+                            ⚙️ Chế độ Admin: Cho phép sửa / xóa từ vựng
+                          </span>
+                        )}
+                      </div>
                       <div className="grid gap-3">
                         {deckCards.map((card) => (
-                          <div key={card.id} className="p-4 border border-border bg-card rounded-2xl flex items-center justify-between shadow-sm">
-                            <div className="space-y-1 text-left">
+                          <div key={card.id} className="p-4 border border-border bg-card rounded-2xl flex items-center justify-between shadow-sm hover:border-primary/40 transition">
+                            <div className="space-y-1 text-left flex-1 pr-3">
                               <div className="flex items-center space-x-2.5">
                                 <span className="font-extrabold text-primary text-base">{card.front}</span>
                                 {card.pronunciation && (
@@ -1176,6 +1294,30 @@ export default function Dashboard() {
                                 <p className="text-xs italic text-muted-foreground">VD: {card.exampleSentence}</p>
                               )}
                             </div>
+
+                            {/* Nút chỉnh sửa / xóa dành cho Admin hoặc Chủ sở hữu Deck */}
+                            {(user?.role === 'ROLE_ADMIN' || !viewingExploreDeck?.isPublic) && (
+                              <div className="flex items-center space-x-1 flex-shrink-0">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={(e) => { e.stopPropagation(); handleOpenEditCard(card); }}
+                                  className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg"
+                                  title="Chỉnh sửa từ vựng (Admin)"
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={(e) => { e.stopPropagation(); handleDeleteCard(card.id); }}
+                                  className="h-8 w-8 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded-lg"
+                                  title="Xóa từ vựng"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -1348,8 +1490,8 @@ export default function Dashboard() {
                   {learnedCards.length > 0 ? (
                     <div className="grid gap-3">
                       {learnedCards.map((card) => (
-                        <div key={card.id} className="p-4 border border-border bg-card rounded-2xl flex items-center justify-between shadow-sm">
-                          <div className="space-y-1 text-left">
+                        <div key={card.id} className="p-4 border border-border bg-card rounded-2xl flex items-center justify-between shadow-sm hover:border-primary/40 transition">
+                          <div className="space-y-1 text-left flex-1 pr-3">
                             <div className="flex items-center space-x-2.5">
                               <span className="font-extrabold text-primary text-base">{card.front}</span>
                               {card.pronunciation && (
@@ -1369,6 +1511,30 @@ export default function Dashboard() {
                               <p className="text-xs italic text-muted-foreground">VD: {card.exampleSentence}</p>
                             )}
                           </div>
+
+                          {/* Nút chỉnh sửa / xóa dành cho Admin */}
+                          {user?.role === 'ROLE_ADMIN' && (
+                            <div className="flex items-center space-x-1 flex-shrink-0">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => { e.stopPropagation(); handleOpenEditCard(card); }}
+                                className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg"
+                                title="Chỉnh sửa từ vựng (Admin)"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => { e.stopPropagation(); handleDeleteCard(card.id, card.deckId); }}
+                                className="h-8 w-8 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded-lg"
+                                title="Xóa từ vựng"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -1412,7 +1578,7 @@ export default function Dashboard() {
               <div className="text-left">
                 <span className="text-xs font-bold uppercase tracking-wider opacity-75">Bạn đã học liên tục</span>
                 <div className="text-4xl font-black mt-2">
-                  3 <span className="text-lg font-bold">ngày streak!</span>
+                  {user?.streakCount || 0} <span className="text-lg font-bold">ngày streak!</span>
                 </div>
               </div>
               <div className="flex items-center space-x-2 text-xs font-bold text-orange-800 justify-start">
@@ -1424,6 +1590,86 @@ export default function Dashboard() {
 
         </div>
       </main>
+
+      {/* DIALOG CHỈNH SỬA TỪ VỰNG DÀNH CHO ADMIN */}
+      <Dialog open={isEditingCardDialogOpen} onOpenChange={setIsEditingCardDialogOpen}>
+        <DialogContent className="max-w-md bg-card border-border text-foreground">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold flex items-center space-x-2 text-left">
+              <Pencil className="h-5 w-5 text-primary" />
+              <span>Chỉnh sửa từ vựng</span>
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground text-left">
+              Chỉnh sửa thông tin từ vựng, phiên âm IPA, nghĩa hoặc câu ví dụ.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleSaveEditCard} className="space-y-4 pt-2">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5 text-left">
+                <Label htmlFor="edit-front" className="text-xs font-bold text-foreground">Từ vựng (Tiếng Anh)</Label>
+                <Input 
+                  id="edit-front" 
+                  value={editFront} 
+                  onChange={(e) => setEditFront(e.target.value)} 
+                  required 
+                  className="bg-background border-border"
+                />
+              </div>
+              <div className="space-y-1.5 text-left">
+                <Label htmlFor="edit-back" className="text-xs font-bold text-foreground">Nghĩa tiếng Việt</Label>
+                <Input 
+                  id="edit-back" 
+                  value={editBack} 
+                  onChange={(e) => setEditBack(e.target.value)} 
+                  required 
+                  className="bg-background border-border"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5 text-left">
+                <Label htmlFor="edit-pronunciation" className="text-xs font-bold text-foreground">Phiên âm / IPA</Label>
+                <Input 
+                  id="edit-pronunciation" 
+                  value={editPronunciation} 
+                  onChange={(e) => setEditPronunciation(e.target.value)} 
+                  placeholder="/.../" 
+                  className="bg-background border-border"
+                />
+              </div>
+              <div className="space-y-1.5 text-left">
+                <Label htmlFor="edit-example" className="text-xs font-bold text-foreground">Câu ví dụ (VD)</Label>
+                <Input 
+                  id="edit-example" 
+                  value={editExample} 
+                  onChange={(e) => setEditExample(e.target.value)} 
+                  placeholder="Câu chứa từ vựng..." 
+                  className="bg-background border-border"
+                />
+              </div>
+            </div>
+
+            <DialogFooter className="pt-3">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => setIsEditingCardDialogOpen(false)}
+              >
+                Hủy
+              </Button>
+              <Button 
+                type="submit" 
+                disabled={isSavingCard}
+                className="bg-primary hover:bg-primary/95 text-white font-bold"
+              >
+                {isSavingCard ? 'Đang lưu...' : 'Lưu thay đổi'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
