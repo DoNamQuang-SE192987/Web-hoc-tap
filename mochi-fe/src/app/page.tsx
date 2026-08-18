@@ -431,8 +431,10 @@ export default function Dashboard() {
 
     if (isCorrect) {
       playSound('correct');
+      setTimeout(() => speakWord(currentWord), 650);
     } else {
       playSound('wrong');
+      setTimeout(() => speakWord(currentWord), 650);
       setFailedCardIds(prev => prev.includes(currentCard.id) ? prev : [...prev, currentCard.id]);
     }
   };
@@ -450,8 +452,10 @@ export default function Dashboard() {
 
     if (isCorrect) {
       playSound('correct');
+      setTimeout(() => speakWord(currentWord), 650);
     } else {
       playSound('wrong');
+      setTimeout(() => speakWord(currentWord), 650);
       setFailedCardIds(prev => prev.includes(currentCard.id) ? prev : [...prev, currentCard.id]);
     }
   };

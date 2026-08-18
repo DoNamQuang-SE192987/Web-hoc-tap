@@ -79,9 +79,14 @@ export default function ReviewPage() {
 
     if (correct) {
       playSound('correct');
-      speakWord(currentCard.front);
+      setTimeout(() => {
+        speakWord(currentCard.front);
+      }, 650);
     } else {
       playSound('wrong');
+      setTimeout(() => {
+        speakWord(currentCard.front);
+      }, 650);
     }
   };
 
@@ -90,7 +95,9 @@ export default function ReviewPage() {
     setIsCorrect(false);
     setIsChecked(true);
     playSound('wrong');
-    speakWord(currentCard.front);
+    setTimeout(() => {
+      speakWord(currentCard.front);
+    }, 650);
   };
 
   const handleReviewSubmit = async (quality: number) => {
