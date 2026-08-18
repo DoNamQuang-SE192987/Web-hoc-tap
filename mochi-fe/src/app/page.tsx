@@ -98,9 +98,11 @@ export default function Dashboard() {
 
   // User Settings states (timezone, notifyTime)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [notifyTime, setNotifyTime] = useState('08:00');
+  const [notifyTime, setNotifyTime] = useState('08:30');
   const [timezone, setTimezone] = useState('GMT+7');
   const [isSavingSettings, setIsSavingSettings] = useState(false);
+
+  const isAdmin = user?.role === 'ROLE_ADMIN' || user?.role === 'ADMIN';
 
   // Load User and Decks
   useEffect(() => {
@@ -756,15 +758,21 @@ export default function Dashboard() {
               </Dialog>
 
               {/* Thông tin User */}
-              <div className="flex items-center space-x-3 bg-muted border border-border rounded-full pl-3 pr-2 py-1">
-                <span className="text-sm font-bold text-muted-foreground">
+              <div className="flex items-center space-x-2.5 bg-muted border border-border rounded-full pl-3.5 pr-2 py-1">
+                <span className="text-sm font-bold text-foreground">
                   {user.displayName}
                 </span>
+                {isAdmin && (
+                  <span className="bg-primary text-white font-extrabold text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full shadow-xs">
+                    Admin
+                  </span>
+                )}
                 <Button
                   onClick={handleLogout}
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8 text-muted-foreground hover:text-red-500 rounded-full"
+                  title="Đăng xuất"
                 >
                   <LogOut className="h-4 w-4" />
                 </Button>
@@ -1259,7 +1267,7 @@ export default function Dashboard() {
                     </div>
 
                     {/* Admin thêm từ vựng hệ thống */}
-                    {user?.role === 'ROLE_ADMIN' && (
+                    {isAdmin && (
                       <form onSubmit={handleAddCard} className="p-5 rounded-3xl border border-border bg-muted/30 space-y-4 shadow-inner">
                         <h4 className="font-bold text-sm text-primary text-left">Thêm từ vựng mới vào chủ đề hệ thống (Admin)</h4>
                         <div className="grid grid-cols-2 gap-4">
@@ -1292,7 +1300,7 @@ export default function Dashboard() {
                     <div className="space-y-3 text-left">
                       <div className="flex items-center justify-between">
                         <h3 className="font-extrabold text-sm text-foreground text-left">Danh sách từ vựng ({deckCards.length} từ)</h3>
-                        {user?.role === 'ROLE_ADMIN' && (
+                        {isAdmin && (
                           <span className="text-[11px] bg-primary/10 text-primary font-bold px-2 py-0.5 rounded-md border border-primary/20">
                             ⚙️ Chế độ Admin: Cho phép sửa / xóa từ vựng
                           </span>
@@ -1323,7 +1331,7 @@ export default function Dashboard() {
                             </div>
 
                             {/* Nút chỉnh sửa / xóa dành cho Admin hoặc Chủ sở hữu Deck */}
-                            {(user?.role === 'ROLE_ADMIN' || !viewingExploreDeck?.isPublic) && (
+                            {(isAdmin || !viewingExploreDeck?.isPublic) && (
                               <div className="flex items-center space-x-1 flex-shrink-0">
                                 <Button
                                   variant="ghost"
@@ -1382,7 +1390,7 @@ export default function Dashboard() {
                       </div>
 
                       {/* Admin tạo chủ đề hệ thống mới */}
-                      {user?.role === 'ROLE_ADMIN' && (
+                      {isAdmin && (
                         <Dialog open={isExploreDeckDialogOpen} onOpenChange={setIsExploreDeckDialogOpen}>
                           <DialogTrigger render={
                             <Button className="bg-primary hover:bg-primary/95 text-white shadow-sm text-xs py-2 h-9 rounded-xl font-sans">
