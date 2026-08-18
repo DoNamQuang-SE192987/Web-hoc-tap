@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
-import { ArrowLeft, Volume2, Check, X, Sparkles, HelpCircle, ArrowRight } from 'lucide-react';
+import { ArrowLeft, Volume2, Check, X, Sparkles, HelpCircle } from 'lucide-react';
 
 interface CardProgressType {
   cardId: string;
