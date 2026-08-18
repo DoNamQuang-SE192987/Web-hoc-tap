@@ -100,30 +100,28 @@ export default function ReviewPage() {
     });
   };
 
-  const handleReviewSubmit = async (quality: number) => {
+  const handleReviewSubmit = (quality: number) => {
     const currentCard = cards[currentIndex];
+    if (!currentCard) return;
 
-    try {
-      // Gọi API cập nhật tiến trình ôn tập (SM-2)
-      await api.post('/api/review', {
-        cardId: currentCard.cardId,
-        quality: quality,
-      });
-
-      // Chuyển sang card tiếp theo
-      if (currentIndex < cards.length - 1) {
-        setTypedWord('');
-        setIsChecked(false);
-        setIsCorrect(false);
-        setCurrentIndex(currentIndex + 1);
-      } else {
-        // Hoàn thành phiên ôn tập -> Lưu lại thời điểm kết thúc
-        localStorage.setItem('last_session_time', Date.now().toString());
-        setCurrentIndex(currentIndex + 1); // Trạng thái hoàn thành
-      }
-    } catch (err) {
-      console.error(err);
+    // Optimistic UI: Chuyển thẻ ngay lập tức (0ms độ trễ)
+    if (currentIndex < cards.length - 1) {
+      setTypedWord('');
+      setIsChecked(false);
+      setIsCorrect(false);
+      setCurrentIndex(prev => prev + 1);
+    } else {
+      localStorage.setItem('last_session_time', Date.now().toString());
+      setCurrentIndex(prev => prev + 1);
     }
+
+    // Gửi API cập nhật tiến trình ôn tập (SM-2) ngầm ở chế độ background
+    api.post('/api/review', {
+      cardId: currentCard.cardId,
+      quality: quality,
+    }).catch(err => {
+      console.error('Lỗi khi đồng bộ kết quả ôn tập:', err);
+    });
   };
 
   if (loading) {

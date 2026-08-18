@@ -145,47 +145,55 @@ export default function Dashboard() {
 
   const fetchData = async () => {
     try {
-      // Sync user profile from backend
-      try {
-        const userRes: any = await api.get('/api/users/me');
-        if (userRes.success && userRes.data) {
-          setUser(userRes.data);
-          if (userRes.data.notifyTime) {
-            setNotifyTime(userRes.data.notifyTime.substring(0, 5));
+      const [userRes, decksRes, dueRes, learnedRes] = await Promise.allSettled([
+        api.get<any, any>('/api/users/me'),
+        api.get<any, any>('/api/decks'),
+        api.get<any, any>('/api/decks/due'),
+        api.get<any, any>('/api/decks/learned')
+      ]);
+
+      if (userRes.status === 'fulfilled') {
+        const val: any = userRes.value;
+        if (val?.success && val?.data) {
+          const userData = val.data;
+          setUser(userData);
+          if (userData.notifyTime) {
+            setNotifyTime(userData.notifyTime.substring(0, 5));
           }
-          if (userRes.data.timezone) {
-            setTimezone(userRes.data.timezone);
+          if (userData.timezone) {
+            setTimezone(userData.timezone);
           }
-          localStorage.setItem('user', JSON.stringify(userRes.data));
+          localStorage.setItem('user', JSON.stringify(userData));
         }
-      } catch (userErr) {
-        // Fallback silently if not authenticated
       }
 
-      // Fetch all decks
-      const decksRes: any = await api.get('/api/decks');
-      if (decksRes.success) {
-        setDecks(decksRes.data.filter((d: Deck) => !d.isPublic));
-        setPublicDecks(decksRes.data.filter((d: Deck) => d.isPublic));
+      if (decksRes.status === 'fulfilled') {
+        const val: any = decksRes.value;
+        if (val?.success && Array.isArray(val?.data)) {
+          setDecks(val.data.filter((d: Deck) => !d.isPublic));
+          setPublicDecks(val.data.filter((d: Deck) => d.isPublic));
+        }
       }
 
-      // Fetch due cards count
-      const dueRes: any = await api.get('/api/decks/due');
-      if (dueRes.success) {
-        setDueCardsCount(dueRes.data.length);
+      if (dueRes.status === 'fulfilled') {
+        const val: any = dueRes.value;
+        if (val?.success && Array.isArray(val?.data)) {
+          setDueCardsCount(val.data.length);
+        }
       }
 
-      // Fetch learned cards progress
-      const learnedRes: any = await api.get('/api/decks/learned');
-      if (learnedRes.success) {
-        setLearnedCards(learnedRes.data.map((c: any) => ({
-          id: c.cardId,
-          deckId: c.deckId,
-          front: c.front,
-          back: c.back,
-          pronunciation: c.pronunciation || '',
-          exampleSentence: c.exampleSentence || ''
-        })));
+      if (learnedRes.status === 'fulfilled') {
+        const val: any = learnedRes.value;
+        if (val?.success && Array.isArray(val?.data)) {
+          setLearnedCards(val.data.map((c: any) => ({
+            id: c.cardId,
+            deckId: c.deckId,
+            front: c.front,
+            back: c.back,
+            pronunciation: c.pronunciation || '',
+            exampleSentence: c.exampleSentence || ''
+          })));
+        }
       }
     } catch (err) {
       console.error('Lỗi khi tải dữ liệu:', err);
@@ -466,23 +474,13 @@ export default function Dashboard() {
     }
   };
 
-  // Lưu tiến trình học và chuyển từ tiếp theo hoặc kích hoạt vòng học lại từ sai
-  const handleNextStudyCard = async () => {
-    try {
-      // Chỉ gửi lưu tiến độ lên server ở vòng học đầu tiên (không cần gửi lưu khi học lại từ sai)
-      if (!isRetryPhase) {
-        // Đánh giá: 4 (Dễ) nếu đúng cả 2 bước, ngược lại là 1 (Quên) để học lại sớm
-        const wasCorrectAll = dictationCorrect && fillBlankCorrect;
-        await api.post('/api/review', {
-          cardId: currentCard.id,
-          quality: wasCorrectAll ? 4 : 1
-        });
-      }
-    } catch (err) {
-      console.error('Lỗi khi lưu tiến trình học:', err);
-    }
+  // Lưu tiến trình học và chuyển từ tiếp theo hoặc kích hoạt vòng học lại từ sai (Optimistic UI)
+  const handleNextStudyCard = () => {
+    const cardToSave = currentCard;
+    const wasCorrectAll = dictationCorrect && fillBlankCorrect;
+    const isCurrentRetry = isRetryPhase;
 
-    // Reset inputs
+    // 1. Reset inputs & Chuyển thẻ ngay lập tức (0ms delay)
     setDictationInput('');
     setDictationSubmitted(false);
     setDictationCorrect(false);
@@ -510,8 +508,16 @@ export default function Dashboard() {
         setIsRetryPhase(false);
       }
     }
-    
-    fetchData();
+
+    // 2. Gửi lưu tiến độ ngầm ở chế độ background (Non-blocking)
+    if (!isCurrentRetry && cardToSave) {
+      api.post('/api/review', {
+        cardId: cardToSave.id,
+        quality: wasCorrectAll ? 4 : 1
+      }).catch(err => {
+        console.error('Lỗi khi lưu tiến trình học:', err);
+      });
+    }
   };
 
   // Tạo câu ví dụ bị khuyết từ (thay từ mục tiêu thành các gạch dưới)

@@ -5,6 +5,24 @@
  * 3. Tự động dừng âm thanh cũ và giọng đọc cũ nếu người dùng thao tác liên tục.
  */
 
+const audioCache: { correct?: HTMLAudioElement; wrong?: HTMLAudioElement } = {};
+
+if (typeof window !== 'undefined') {
+  try {
+    const correctAudio = new Audio('/sounds/correct.mp3');
+    correctAudio.preload = 'auto';
+    correctAudio.volume = 0.85;
+    audioCache.correct = correctAudio;
+
+    const wrongAudio = new Audio('/sounds/wrong.mp3');
+    wrongAudio.preload = 'auto';
+    wrongAudio.volume = 0.85;
+    audioCache.wrong = wrongAudio;
+  } catch (e) {
+    // Ignore initialization errors on SSR or unsupported environments
+  }
+}
+
 let currentAudio: HTMLAudioElement | null = null;
 
 export const playSound = (type: 'correct' | 'wrong', onEnded?: () => void) => {
@@ -27,9 +45,15 @@ export const playSound = (type: 'correct' | 'wrong', onEnded?: () => void) => {
     window.speechSynthesis.cancel();
   }
 
-  const mp3Path = type === 'correct' ? '/sounds/correct.mp3' : '/sounds/wrong.mp3';
-  const audio = new Audio(mp3Path);
-  audio.volume = 0.85;
+  let audio = audioCache[type];
+  if (!audio) {
+    audio = new Audio(type === 'correct' ? '/sounds/correct.mp3' : '/sounds/wrong.mp3');
+    audio.preload = 'auto';
+    audio.volume = 0.85;
+    audioCache[type] = audio;
+  }
+
+  audio.currentTime = 0;
   currentAudio = audio;
 
   let hasTriggeredEnd = false;
@@ -38,21 +62,18 @@ export const playSound = (type: 'correct' | 'wrong', onEnded?: () => void) => {
     hasTriggeredEnd = true;
     currentAudio = null;
     if (onEnded) {
-      // Khoảng đệm 100ms sau khi nhạc tắt để đọc từ vựng tự nhiên nhất
-      setTimeout(onEnded, 100);
+      setTimeout(onEnded, 50);
     }
   };
 
-  audio.addEventListener('ended', triggerEnd, { once: true });
-  audio.addEventListener('error', () => {
-    // Nếu không tải được file MP3 -> fallback sang Web Audio
+  audio.onended = triggerEnd;
+  audio.onerror = () => {
     playSynthesizedSound(type, triggerEnd);
-  }, { once: true });
+  };
 
   const playPromise = audio.play();
   if (playPromise !== undefined) {
     playPromise.catch(() => {
-      // Trình duyệt chặn hoặc lỗi -> fallback sang Web Audio
       playSynthesizedSound(type, triggerEnd);
     });
   }
