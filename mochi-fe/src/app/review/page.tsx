@@ -3,11 +3,12 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
+import { playSound } from '@/lib/sound';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
-import { ArrowLeft, Volume2, Check, X, ShieldAlert, Sparkles, Smile } from 'lucide-react';
+import { ArrowLeft, Volume2, Check, X, Sparkles, HelpCircle, ArrowRight } from 'lucide-react';
 
 interface CardProgressType {
   cardId: string;
@@ -22,7 +23,6 @@ export default function ReviewPage() {
   const [cards, setCards] = useState<CardProgressType[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [isFlipped, setIsFlipped] = useState(false);
   
   // States for writing/typing check
   const [typedWord, setTypedWord] = useState('');
@@ -47,23 +47,62 @@ export default function ReviewPage() {
     }
   };
 
-  const handleFlip = () => {
-    if (!isFlipped) {
-      setIsFlipped(true);
+  // Che từ vựng mục tiêu trong câu ví dụ bằng *****
+  const maskTargetWord = (sentence?: string, word?: string) => {
+    if (!sentence || !word) return '...';
+    const escapedWord = word.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`\\b(${escapedWord})\\b`, 'gi');
+    return sentence.replace(regex, '*****');
+  };
+
+  // Phát âm từ vựng
+  const speakWord = (text: string) => {
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'en-US';
+      window.speechSynthesis.speak(utterance);
     }
   };
 
-  const checkWord = () => {
+  const handleCheckWord = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!typedWord.trim()) return;
+
     const currentCard = cards[currentIndex];
     const cleanTyped = typedWord.trim().toLowerCase();
     const cleanActual = currentCard.front.trim().toLowerCase();
+    const correct = cleanTyped === cleanActual;
     
-    setIsCorrect(cleanTyped === cleanActual);
+    setIsCorrect(correct);
     setIsChecked(true);
+
+    if (correct) {
+      playSound('correct');
+      speakWord(currentCard.front);
+    } else {
+      playSound('wrong');
+    }
+  };
+
+  const handleShowAnswer = () => {
+    const currentCard = cards[currentIndex];
+    setIsCorrect(false);
+    setIsChecked(true);
+    playSound('wrong');
+    speakWord(currentCard.front);
   };
 
   const handleReviewSubmit = async (quality: number) => {
     const currentCard = cards[currentIndex];
+
+    // Phát âm thanh phản hồi theo chất lượng nhớ
+    if (quality >= 3) {
+      playSound('correct');
+    } else if (quality === 1) {
+      playSound('wrong');
+    }
+
     try {
       // Gọi API cập nhật tiến trình ôn tập (SM-2)
       await api.post('/api/review', {
@@ -75,7 +114,7 @@ export default function ReviewPage() {
       if (currentIndex < cards.length - 1) {
         setTypedWord('');
         setIsChecked(false);
-        setIsFlipped(false);
+        setIsCorrect(false);
         setCurrentIndex(currentIndex + 1);
       } else {
         // Hoàn thành phiên ôn tập -> Lưu lại thời điểm kết thúc
@@ -89,8 +128,8 @@ export default function ReviewPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground">
-        Đang chuẩn bị thẻ học...
+      <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground font-sans">
+        Đang chuẩn bị thẻ ôn tập...
       </div>
     );
   }
@@ -98,7 +137,7 @@ export default function ReviewPage() {
   // Kết thúc phiên ôn tập
   if (cards.length === 0 || currentIndex >= cards.length) {
     return (
-      <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-6 relative overflow-hidden">
+      <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans">
         <div className="absolute top-1/4 left-1/4 h-80 w-80 rounded-full bg-emerald-500/5 blur-3xl" />
         <div className="absolute bottom-1/4 right-1/4 h-80 w-80 rounded-full bg-primary/5 blur-3xl" />
 
@@ -109,13 +148,13 @@ export default function ReviewPage() {
           <h2 className="text-3xl font-black bg-gradient-to-r from-emerald-500 to-teal-500 bg-clip-text text-transparent">
             Hoàn thành xuất sắc!
           </h2>
-          <p className="text-muted-foreground text-sm">
-            Bạn đã hoàn thành phiên ôn tập. Hệ thống Spaced Repetition (SM-2) sẽ tính toán và hẹn giờ cho bạn quay lại ôn tập vào **Thời điểm vàng 30 phút sau**.
+          <p className="text-muted-foreground text-sm leading-relaxed">
+            Bạn đã hoàn thành phiên ôn tập. Hệ thống Spaced Repetition (SM-2) sẽ tự động tính toán và gửi email nhắc bạn quay lại ôn tập vào <strong>Thời điểm vàng 30 phút sau</strong>.
           </p>
 
           <Button 
             onClick={() => router.push('/')}
-            className="w-full bg-primary hover:bg-primary/95 text-white py-6 rounded-2xl font-bold shadow-md"
+            className="w-full bg-primary hover:bg-primary/95 text-white py-6 rounded-2xl font-bold shadow-md text-base font-sans"
           >
             Quay về Trang chủ
           </Button>
@@ -143,8 +182,8 @@ export default function ReviewPage() {
         >
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <span className="font-bold text-sm text-muted-foreground">
-          Tiến trình: Thẻ {currentIndex + 1} / {cards.length}
+        <span className="font-bold text-sm text-muted-foreground font-sans">
+          Tiến trình ôn tập: Thẻ {currentIndex + 1} / {cards.length}
         </span>
         <div className="w-10 h-1" />
       </header>
@@ -155,120 +194,152 @@ export default function ReviewPage() {
       </div>
 
       {/* Main Review Area */}
-      <main className="flex-1 max-w-xl w-full mx-auto px-6 mt-10 flex flex-col justify-center relative z-10">
-        {/* Flashcard Container (3D Flip Effect) */}
-        <div 
-          onClick={handleFlip}
-          className={`w-full aspect-[1.6] cursor-pointer perspective-1000 select-none`}
-        >
-          <div 
-            className={`w-full h-full relative transition-transform duration-500 transform-style-3d ${
-              isFlipped ? 'rotate-y-180' : ''
-            }`}
-          >
-            {/* Front Side */}
-            <Card className="absolute inset-0 backface-hidden border-border bg-card flex flex-col items-center justify-center p-8 text-center shadow-md">
-              <CardContent className="flex flex-col items-center justify-center space-y-4">
-                <h1 className="text-4xl font-extrabold text-foreground tracking-wide">{currentCard.front}</h1>
-                {currentCard.pronunciation && (
-                  <div className="flex items-center space-x-1.5 text-primary font-mono text-sm bg-primary/5 px-3 py-1 rounded-full border border-primary/20">
-                    <Volume2 className="h-4 w-4" />
-                    <span>{currentCard.pronunciation}</span>
-                  </div>
-                )}
-                <p className="text-xs text-muted-foreground pt-6 animate-pulse">Bấm vào thẻ để xem định nghĩa</p>
-              </CardContent>
-            </Card>
+      <main className="flex-1 max-w-xl w-full mx-auto px-6 mt-8 flex flex-col justify-center relative z-10 space-y-6">
+        {/* Flashcard Ôn tập trực tiếp (Nghĩa tiếng Việt & Câu ví dụ che từ) */}
+        <Card className="w-full border-border bg-card shadow-md p-8 text-center rounded-3xl relative overflow-hidden">
+          <CardContent className="flex flex-col items-center justify-center space-y-5 p-0">
+            <span className="text-xs text-primary font-bold uppercase tracking-wider bg-primary/10 px-3.5 py-1 rounded-full border border-primary/20">
+              Ý nghĩa tiếng Việt
+            </span>
 
-            {/* Back Side */}
-            <Card className="absolute inset-0 backface-hidden rotate-y-180 border-border bg-card flex flex-col items-center justify-center p-8 text-center shadow-md">
-              <CardContent className="flex flex-col items-center justify-center space-y-3">
-                <span className="text-xs text-primary font-bold uppercase tracking-wider">Ý nghĩa</span>
-                <h2 className="text-3xl font-bold text-foreground">{currentCard.back}</h2>
-                {currentCard.exampleSentence && (
-                  <p className="text-sm text-muted-foreground italic max-w-sm border-t border-border pt-4 mt-2">
-                    "{currentCard.exampleSentence}"
+            {/* Nghĩa tiếng Việt */}
+            <h2 className="text-3xl md:text-4xl font-black text-foreground tracking-wide">
+              {currentCard.back}
+            </h2>
+
+            {/* Câu ví dụ (Che từ vựng khi chưa kiểm tra, hiện đầy đủ khi đã kiểm tra) */}
+            {currentCard.exampleSentence && (
+              <div className="border-t border-border pt-4 w-full">
+                <p className="text-sm md:text-base text-muted-foreground italic leading-relaxed px-2">
+                  "{isChecked 
+                    ? currentCard.exampleSentence 
+                    : maskTargetWord(currentCard.exampleSentence, currentCard.front)}"
+                </p>
+              </div>
+            )}
+
+            {/* Hiển thị từ tiếng Anh gốc và phiên âm SAU KHI bấm Kiểm tra */}
+            {isChecked && (
+              <div className="w-full pt-4 border-t border-border animate-fade-in space-y-3">
+                <div className="flex items-center justify-center space-x-3">
+                  <h1 className="text-3xl font-black text-primary tracking-wide">
+                    {currentCard.front}
+                  </h1>
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    onClick={() => speakWord(currentCard.front)}
+                    className="h-9 w-9 rounded-full border-primary/30 text-primary hover:bg-primary/10"
+                    title="Nghe phát âm"
+                  >
+                    <Volume2 className="h-4 w-4" />
+                  </Button>
+                </div>
+                {currentCard.pronunciation && (
+                  <p className="text-xs font-mono text-muted-foreground">
+                    {currentCard.pronunciation}
                   </p>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Ô nhập từ vựng tiếng Anh */}
+        <div className="p-6 rounded-3xl border border-border bg-card space-y-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="font-bold text-xs text-foreground">
+              Nhập từ vựng tiếng Anh tương ứng:
+            </span>
+            {!isChecked && (
+              <button 
+                type="button" 
+                onClick={handleShowAnswer}
+                className="text-xs text-muted-foreground hover:text-primary underline flex items-center space-x-1"
+              >
+                <HelpCircle className="h-3.5 w-3.5" />
+                <span>Không nhớ từ này?</span>
+              </button>
+            )}
           </div>
+
+          <form onSubmit={handleCheckWord} className="flex space-x-3">
+            <Input
+              type="text"
+              placeholder="Gõ từ tiếng Anh tại đây..."
+              value={typedWord}
+              onChange={(e) => setTypedWord(e.target.value)}
+              disabled={isChecked}
+              autoFocus
+              className={`bg-background text-foreground text-base placeholder:text-gray-400 focus-visible:ring-primary h-12 rounded-2xl border-2 ${
+                isChecked
+                  ? isCorrect
+                    ? 'border-emerald-500 bg-emerald-50/10 focus-visible:ring-emerald-500 font-bold'
+                    : 'border-rose-500 bg-rose-50/10 focus-visible:ring-rose-500 font-bold'
+                  : 'border-border'
+              }`}
+            />
+            {!isChecked ? (
+              <Button type="submit" className="bg-primary hover:bg-primary/95 text-white px-7 h-12 rounded-2xl font-bold font-sans shadow-sm">
+                Kiểm tra
+              </Button>
+            ) : (
+              <div className={`flex items-center justify-center w-12 h-12 rounded-2xl flex-shrink-0 ${isCorrect ? 'bg-emerald-100 text-emerald-700 border border-emerald-300 animate-bounce' : 'bg-rose-100 text-rose-700 border border-rose-300'}`}>
+                {isCorrect ? <Check className="h-6 w-6 stroke-[3]" /> : <X className="h-6 w-6 stroke-[3]" />}
+              </div>
+            )}
+          </form>
+
+          {isChecked && !isCorrect && (
+            <div className="p-3 bg-rose-50 border border-rose-200 rounded-2xl text-rose-700 text-xs flex items-center justify-between animate-fade-in">
+              <span>Đáp án đúng: <strong className="font-mono text-sm underline">{currentCard.front}</strong></span>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => speakWord(currentCard.front)}
+                className="text-rose-700 hover:text-rose-900 hover:bg-rose-100 h-7 px-2"
+              >
+                <Volume2 className="h-4 w-4 mr-1" /> Nghe lại
+              </Button>
+            </div>
+          )}
         </div>
 
-        {/* Typing Practice Panel & Review Buttons */}
-        {isFlipped && (
-          <div className="mt-8 space-y-6 animate-fade-in">
-            {/* Typing practice form */}
-            <div className="p-5 rounded-2xl border border-border bg-card space-y-4 shadow-sm">
-              <h4 className="font-bold text-xs text-primary flex items-center">
-                <Smile className="h-4 w-4 mr-1.5" /> Ghi nhớ từ vựng (Nhập lại từ tiếng Anh bạn vừa lật)
-              </h4>
-              <div className="flex space-x-3">
-                <Input
-                  type="text"
-                  placeholder="Gõ lại từ tiếng Anh ở mặt trước..."
-                  value={typedWord}
-                  onChange={(e) => setTypedWord(e.target.value)}
-                  disabled={isChecked}
-                  className={`bg-background text-foreground placeholder:text-gray-400 focus-visible:ring-primary border ${
-                    isChecked
-                      ? isCorrect
-                        ? 'border-emerald-500/50 focus-visible:ring-emerald-500 bg-emerald-50/10'
-                        : 'border-red-500/50 focus-visible:ring-red-500 bg-red-50/10'
-                      : 'border-border'
-                  }`}
-                />
-                {!isChecked ? (
-                  <Button onClick={checkWord} className="bg-primary hover:bg-primary/95 text-white px-6">
-                    Kiểm tra
-                  </Button>
-                ) : (
-                  <div className={`flex items-center justify-center w-10 h-10 rounded-xl ${isCorrect ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 'bg-red-50 text-red-600 border border-red-200'}`}>
-                    {isCorrect ? <Check className="h-5 w-5" /> : <X className="h-5 w-5" />}
-                  </div>
-                )}
-              </div>
-
-              {isChecked && !isCorrect && (
-                <p className="text-xs text-red-700 bg-red-50 border border-red-200 p-2.5 rounded-lg">
-                  Đáp án chính xác: <strong className="font-mono text-sm underline">{currentCard.front}</strong>
-                </p>
-              )}
-            </div>
-
-            {/* Quality rating buttons (SM-2) */}
-            <div className="space-y-3">
-              <h5 className="text-xs font-bold text-muted-foreground text-center uppercase tracking-wider">Đánh giá độ nhớ để tính lịch ôn</h5>
-              <div className="grid grid-cols-4 gap-3">
-                <Button 
-                  onClick={() => handleReviewSubmit(1)}
-                  className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 py-6 rounded-xl font-bold flex flex-col h-auto"
-                >
-                  <span>Quên</span>
-                  <span className="text-[10px] font-normal text-red-600/70 mt-1">Lại sau 30p</span>
-                </Button>
-                <Button 
-                  onClick={() => handleReviewSubmit(2)}
-                  className="bg-amber-50 hover:bg-amber-100 text-amber-600 border border-amber-200 py-6 rounded-xl font-bold flex flex-col h-auto"
-                >
-                  <span>Khó</span>
-                  <span className="text-[10px] font-normal text-amber-600/70 mt-1">Lại ngày mai</span>
-                </Button>
-                <Button 
-                  onClick={() => handleReviewSubmit(3)}
-                  className="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-200 py-6 rounded-xl font-bold flex flex-col h-auto"
-                >
-                  <span>Nhớ</span>
-                  <span className="text-[10px] font-normal text-indigo-600/70 mt-1">Lại sau vài ngày</span>
-                </Button>
-                <Button 
-                  onClick={() => handleReviewSubmit(4)}
-                  className="bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-200 py-6 rounded-xl font-bold flex flex-col h-auto"
-                >
-                  <span>Dễ</span>
-                  <span className="text-[10px] font-normal text-emerald-600/70 mt-1">Lại dài hạn</span>
-                </Button>
-              </div>
+        {/* 4 Nút đánh giá SM-2 (Xuất hiện sau khi bấm Kiểm tra) */}
+        {isChecked && (
+          <div className="space-y-3 animate-fade-in pt-2">
+            <h5 className="text-xs font-bold text-muted-foreground text-center uppercase tracking-wider">
+              Đánh giá mức độ nhớ để tính lịch ôn tiếp theo
+            </h5>
+            <div className="grid grid-cols-4 gap-3">
+              <Button 
+                onClick={() => handleReviewSubmit(1)}
+                className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 py-6 rounded-2xl font-bold flex flex-col h-auto transition-transform hover:scale-[1.03]"
+              >
+                <span className="text-sm">Quên</span>
+                <span className="text-[10px] font-normal text-red-600/70 mt-1">Lại sau 30p</span>
+              </Button>
+              <Button 
+                onClick={() => handleReviewSubmit(2)}
+                className="bg-amber-50 hover:bg-amber-100 text-amber-600 border border-amber-200 py-6 rounded-2xl font-bold flex flex-col h-auto transition-transform hover:scale-[1.03]"
+              >
+                <span className="text-sm">Khó</span>
+                <span className="text-[10px] font-normal text-amber-600/70 mt-1">Lại ngày mai</span>
+              </Button>
+              <Button 
+                onClick={() => handleReviewSubmit(3)}
+                className="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-200 py-6 rounded-2xl font-bold flex flex-col h-auto transition-transform hover:scale-[1.03]"
+              >
+                <span className="text-sm">Nhớ</span>
+                <span className="text-[10px] font-normal text-indigo-600/70 mt-1">Lại sau vài ngày</span>
+              </Button>
+              <Button 
+                onClick={() => handleReviewSubmit(4)}
+                className="bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-200 py-6 rounded-2xl font-bold flex flex-col h-auto transition-transform hover:scale-[1.03]"
+              >
+                <span className="text-sm">Dễ</span>
+                <span className="text-[10px] font-normal text-emerald-600/70 mt-1">Lại dài hạn</span>
+              </Button>
             </div>
           </div>
         )}

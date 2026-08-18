@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
+import { playSound } from '@/lib/sound';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -428,7 +429,10 @@ export default function Dashboard() {
     setDictationCorrect(isCorrect);
     setDictationSubmitted(true);
 
-    if (!isCorrect) {
+    if (isCorrect) {
+      playSound('correct');
+    } else {
+      playSound('wrong');
       setFailedCardIds(prev => prev.includes(currentCard.id) ? prev : [...prev, currentCard.id]);
     }
   };
@@ -444,7 +448,10 @@ export default function Dashboard() {
     setFillBlankCorrect(isCorrect);
     setFillBlankSubmitted(true);
 
-    if (!isCorrect) {
+    if (isCorrect) {
+      playSound('correct');
+    } else {
+      playSound('wrong');
       setFailedCardIds(prev => prev.includes(currentCard.id) ? prev : [...prev, currentCard.id]);
     }
   };
