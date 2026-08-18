@@ -3,23 +3,34 @@ package com.flashcard.service;
 import com.flashcard.dto.request.LoginRequest;
 import com.flashcard.dto.request.RegisterRequest;
 import com.flashcard.dto.response.AuthResponse;
+import com.flashcard.entity.Role;
 import com.flashcard.entity.User;
 import com.flashcard.repository.UserRepository;
 import com.flashcard.security.JwtUtil;
-import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.UUID;
+
 @Service
-@RequiredArgsConstructor
 public class AuthService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final AuthenticationManager authenticationManager;
+
+    public AuthService(UserRepository userRepository,
+                       PasswordEncoder passwordEncoder,
+                       JwtUtil jwtUtil,
+                       AuthenticationManager authenticationManager) {
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.jwtUtil = jwtUtil;
+        this.authenticationManager = authenticationManager;
+    }
 
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
@@ -30,6 +41,7 @@ public class AuthService {
                 .email(request.getEmail())
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .displayName(request.getDisplayName())
+                .role(Role.ROLE_USER)
                 .build();
 
         userRepository.save(user);
@@ -40,7 +52,7 @@ public class AuthService {
                 .token(jwtToken)
                 .email(user.getEmail())
                 .displayName(user.getDisplayName())
-                .role(user.getRole().name())
+                .role(user.getRole() != null ? user.getRole().name() : Role.ROLE_USER.name())
                 .build();
     }
 
@@ -62,7 +74,7 @@ public class AuthService {
                 .token(jwtToken)
                 .email(user.getEmail())
                 .displayName(user.getDisplayName())
-                .role(user.getRole().name())
+                .role(user.getRole() != null ? user.getRole().name() : Role.ROLE_USER.name())
                 .build();
     }
 
@@ -88,9 +100,9 @@ public class AuthService {
                     .orElseGet(() -> {
                         User newUser = User.builder()
                                 .email(email)
+                                .passwordHash(passwordEncoder.encode(UUID.randomUUID().toString()))
                                 .displayName(name != null ? name : "Google User")
-                                .passwordHash(passwordEncoder.encode(java.util.UUID.randomUUID().toString()))
-                                .role(com.flashcard.entity.Role.ROLE_USER)
+                                .role(Role.ROLE_USER)
                                 .build();
                         return userRepository.save(newUser);
                     });
@@ -101,7 +113,7 @@ public class AuthService {
                     .token(jwtToken)
                     .email(user.getEmail())
                     .displayName(user.getDisplayName())
-                    .role(user.getRole().name())
+                    .role(user.getRole() != null ? user.getRole().name() : Role.ROLE_USER.name())
                     .build();
             
         } catch (Exception e) {

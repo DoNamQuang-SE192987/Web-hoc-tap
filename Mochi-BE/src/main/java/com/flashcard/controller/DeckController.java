@@ -5,7 +5,6 @@ import com.flashcard.dto.response.ApiResponse;
 import com.flashcard.dto.response.DeckResponse;
 import com.flashcard.service.DeckService;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -15,10 +14,13 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/decks")
-@RequiredArgsConstructor
 public class DeckController {
 
     private final DeckService deckService;
+
+    public DeckController(DeckService deckService) {
+        this.deckService = deckService;
+    }
 
     @PostMapping
     public ResponseEntity<ApiResponse<DeckResponse>> createDeck(

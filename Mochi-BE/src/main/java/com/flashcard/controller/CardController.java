@@ -5,7 +5,6 @@ import com.flashcard.dto.response.ApiResponse;
 import com.flashcard.dto.response.CardResponse;
 import com.flashcard.service.CardService;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -15,13 +14,15 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/decks/{deckId}/cards")
-@RequiredArgsConstructor
 public class CardController {
 
     private final CardService cardService;
 
+    public CardController(CardService cardService) {
+        this.cardService = cardService;
+    }
+
     @PostMapping
-    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<CardResponse>> createCard(
             @PathVariable UUID deckId,
             @Valid @RequestBody CardRequest request,
@@ -29,6 +30,27 @@ public class CardController {
         String userEmail = authentication.getName();
         CardResponse response = cardService.createCard(deckId, userEmail, request);
         return ResponseEntity.ok(ApiResponse.success(response, "Thêm thẻ mới thành công"));
+    }
+
+    @PutMapping("/{cardId}")
+    public ResponseEntity<ApiResponse<CardResponse>> updateCard(
+            @PathVariable UUID deckId,
+            @PathVariable UUID cardId,
+            @Valid @RequestBody CardRequest request,
+            Authentication authentication) {
+        String userEmail = authentication.getName();
+        CardResponse response = cardService.updateCard(deckId, cardId, userEmail, request);
+        return ResponseEntity.ok(ApiResponse.success(response, "Cập nhật thẻ thành công"));
+    }
+
+    @DeleteMapping("/{cardId}")
+    public ResponseEntity<ApiResponse<String>> deleteCard(
+            @PathVariable UUID deckId,
+            @PathVariable UUID cardId,
+            Authentication authentication) {
+        String userEmail = authentication.getName();
+        cardService.deleteCard(deckId, cardId, userEmail);
+        return ResponseEntity.ok(ApiResponse.success(null, "Xóa thẻ thành công"));
     }
 
     @GetMapping

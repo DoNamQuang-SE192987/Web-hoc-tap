@@ -5,8 +5,8 @@ import com.flashcard.entity.User;
 import com.flashcard.repository.CardProgressRepository;
 import com.flashcard.repository.UserRepository;
 import com.flashcard.service.NotificationService;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,13 +18,19 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @Component
-@RequiredArgsConstructor
-@Slf4j
 public class NotificationScheduler {
+
+    private static final Logger log = LoggerFactory.getLogger(NotificationScheduler.class);
 
     private final UserRepository userRepository;
     private final CardProgressRepository cardProgressRepository;
     private final NotificationService notificationService;
+
+    public NotificationScheduler(UserRepository userRepository, CardProgressRepository cardProgressRepository, NotificationService notificationService) {
+        this.userRepository = userRepository;
+        this.cardProgressRepository = cardProgressRepository;
+        this.notificationService = notificationService;
+    }
 
     // Chạy mỗi phút 1 lần ở giây thứ 0 (0 * * * * *)
     @Scheduled(cron = "0 * * * * *")
@@ -51,7 +57,7 @@ public class NotificationScheduler {
                 List<CardProgress> userCards = entry.getValue();
                 
                 // Gửi email thời điểm vàng
-                notificationService.sendReminderEmail(
+                notificationService.sendGoldenTimeReminderEmail(
                         user.getEmail(),
                         user.getDisplayName(),
                         userCards.size(),
@@ -63,29 +69,41 @@ public class NotificationScheduler {
                     cp.setReminded(true);
                 }
                 cardProgressRepository.saveAll(userCards);
-                log.info("Đã gửi email Thời điểm vàng cho user {}", user.getEmail());
+                log.info("Đã gửi email Thời điểm vàng 30 phút cho user {}", user.getEmail());
             }
         }
 
-        // --- 2. Luồng nhắc nhở DAILY (theo notify_time) ---
-        List<User> usersToNotify = userRepository.findUsersToNotify(hour, minute);
+        // --- 2. Luồng nhắc nhở DAILY (theo notify_time và timezone của user) ---
+        List<User> usersWithNotify = userRepository.findAllWithNotifyTime();
 
-        if (usersToNotify.isEmpty()) {
-            return;
-        }
+        for (User user : usersWithNotify) {
+            LocalTime userNotifyTime = user.getNotifyTime();
+            if (userNotifyTime == null) continue;
 
-        // Gửi email cho từng user nếu họ có thẻ cần ôn
-        for (User user : usersToNotify) {
-            // Đếm số thẻ cần ôn
-            int dueCardCount = cardProgressRepository.findDueCards(user.getId(), currentDateTime).size();
+            // Xác định múi giờ của user (mặc định Asia/Ho_Chi_Minh nếu không có)
+            java.time.ZoneId userZone;
+            try {
+                userZone = (user.getTimezone() != null && !user.getTimezone().isBlank())
+                        ? java.time.ZoneId.of(user.getTimezone())
+                        : java.time.ZoneId.of("Asia/Ho_Chi_Minh");
+            } catch (Exception e) {
+                userZone = java.time.ZoneId.of("Asia/Ho_Chi_Minh");
+            }
 
-            if (dueCardCount > 0) {
-                notificationService.sendReminderEmail(
-                        user.getEmail(),
-                        user.getDisplayName(),
-                        dueCardCount,
-                        user.getStreakCount()
-                );
+            LocalTime userCurrentTime = LocalTime.now(userZone);
+            if (userCurrentTime.getHour() == userNotifyTime.getHour() && userCurrentTime.getMinute() == userNotifyTime.getMinute()) {
+                // Đếm số thẻ cần ôn
+                int dueCardCount = cardProgressRepository.findDueCards(user.getId(), currentDateTime).size();
+
+                if (dueCardCount > 0) {
+                    notificationService.sendReminderEmail(
+                            user.getEmail(),
+                            user.getDisplayName(),
+                            dueCardCount,
+                            user.getStreakCount()
+                    );
+                    log.info("Đã gửi email nhắc nhở hàng ngày cho user {} (lúc {}:{})", user.getEmail(), userCurrentTime.getHour(), userCurrentTime.getMinute());
+                }
             }
         }
     }

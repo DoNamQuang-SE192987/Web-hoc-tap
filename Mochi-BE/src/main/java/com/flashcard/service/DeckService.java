@@ -7,7 +7,6 @@ import com.flashcard.entity.User;
 import com.flashcard.exception.ResourceNotFoundException;
 import com.flashcard.repository.DeckRepository;
 import com.flashcard.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -15,7 +14,6 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 public class DeckService {
 
     private final DeckRepository deckRepository;
@@ -23,6 +21,18 @@ public class DeckService {
     private final com.flashcard.repository.CardRepository cardRepository;
     private final com.flashcard.repository.CardProgressRepository cardProgressRepository;
     private final com.flashcard.repository.ReviewLogRepository reviewLogRepository;
+
+    public DeckService(DeckRepository deckRepository,
+                       UserRepository userRepository,
+                       com.flashcard.repository.CardRepository cardRepository,
+                       com.flashcard.repository.CardProgressRepository cardProgressRepository,
+                       com.flashcard.repository.ReviewLogRepository reviewLogRepository) {
+        this.deckRepository = deckRepository;
+        this.userRepository = userRepository;
+        this.cardRepository = cardRepository;
+        this.cardProgressRepository = cardProgressRepository;
+        this.reviewLogRepository = reviewLogRepository;
+    }
 
     public DeckResponse createDeck(String userEmail, DeckRequest request) {
         User user = userRepository.findByEmail(userEmail)

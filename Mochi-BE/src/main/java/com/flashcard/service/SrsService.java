@@ -22,13 +22,22 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 public class SrsService {
 
     private final CardProgressRepository cardProgressRepository;
     private final CardRepository cardRepository;
     private final UserRepository userRepository;
     private final ReviewLogRepository reviewLogRepository;
+
+    public SrsService(CardProgressRepository cardProgressRepository,
+                      CardRepository cardRepository,
+                      UserRepository userRepository,
+                      ReviewLogRepository reviewLogRepository) {
+        this.cardProgressRepository = cardProgressRepository;
+        this.cardRepository = cardRepository;
+        this.userRepository = userRepository;
+        this.reviewLogRepository = reviewLogRepository;
+    }
 
     public List<CardProgressResponse> getDueCards(String userEmail) {
         User user = userRepository.findByEmail(userEmail)
@@ -39,8 +48,12 @@ public class SrsService {
 
         return dueCards.stream().map(cp -> CardProgressResponse.builder()
                 .cardId(cp.getCard().getId())
+                .deckId(cp.getCard().getDeck().getId())
                 .front(cp.getCard().getFront())
                 .back(cp.getCard().getBack())
+                .exampleSentence(cp.getCard().getExampleSentence())
+                .pronunciation(cp.getCard().getPronunciation())
+                .imageUrl(cp.getCard().getImageUrl())
                 .interval(cp.getInterval())
                 .repetition(cp.getRepetition())
                 .easeFactor(cp.getEaseFactor())
@@ -79,9 +92,11 @@ public class SrsService {
             progress.setInterval(0); // 0 tương đương với thời điểm vàng 30 phút
         } else {
             if (progress.getRepetition() == 0) {
-                progress.setInterval(1);
+                progress.setInterval(0); // Vừa học xong lần đầu -> Hẹn 30 phút sau ôn lại (Thời điểm vàng)
             } else if (progress.getRepetition() == 1) {
-                progress.setInterval(6);
+                progress.setInterval(1); // Ôn lại mốc 30 phút thành công -> Hẹn 1 ngày sau
+            } else if (progress.getRepetition() == 2) {
+                progress.setInterval(6); // Ôn lại mốc 1 ngày thành công -> Hẹn 6 ngày sau
             } else {
                 // interval = round(interval * easeFactor)
                 BigDecimal newInterval = BigDecimal.valueOf(progress.getInterval())
@@ -92,7 +107,6 @@ public class SrsService {
         }
 
         // 2. Cập nhật EaseFactor: easeFactor = easeFactor + 0.1 - (4 - quality) * 0.08
-        // Tính: (4 - quality) * 0.08
         BigDecimal penalty = BigDecimal.valueOf((4 - quality) * 0.08);
         BigDecimal newEaseFactor = progress.getEaseFactor()
                 .add(new BigDecimal("0.1"))
@@ -133,8 +147,12 @@ public class SrsService {
 
         return CardProgressResponse.builder()
                 .cardId(progress.getCard().getId())
+                .deckId(progress.getCard().getDeck().getId())
                 .front(progress.getCard().getFront())
                 .back(progress.getCard().getBack())
+                .exampleSentence(progress.getCard().getExampleSentence())
+                .pronunciation(progress.getCard().getPronunciation())
+                .imageUrl(progress.getCard().getImageUrl())
                 .interval(progress.getInterval())
                 .repetition(progress.getRepetition())
                 .easeFactor(progress.getEaseFactor())
@@ -149,8 +167,12 @@ public class SrsService {
         return cardProgressRepository.findByUserId(user.getId())
                 .stream().map(cp -> CardProgressResponse.builder()
                         .cardId(cp.getCard().getId())
+                        .deckId(cp.getCard().getDeck().getId())
                         .front(cp.getCard().getFront())
                         .back(cp.getCard().getBack())
+                        .exampleSentence(cp.getCard().getExampleSentence())
+                        .pronunciation(cp.getCard().getPronunciation())
+                        .imageUrl(cp.getCard().getImageUrl())
                         .interval(cp.getInterval())
                         .repetition(cp.getRepetition())
                         .easeFactor(cp.getEaseFactor())
@@ -159,3 +181,4 @@ public class SrsService {
                 ).collect(Collectors.toList());
     }
 }
+

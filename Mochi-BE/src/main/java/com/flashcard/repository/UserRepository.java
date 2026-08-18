@@ -18,7 +18,12 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     // Kiểm tra email đã tồn tại chưa (Dùng cho đăng ký)
     boolean existsByEmail(String email);
 
+    // Tìm tất cả user có cài đặt giờ thông báo
+    @Query("SELECT u FROM User u WHERE u.notifyTime IS NOT NULL")
+    List<User> findAllWithNotifyTime();
+
     // Tìm user theo giờ nhận thông báo (Bỏ qua giây)
     @Query("SELECT u FROM User u WHERE EXTRACT(HOUR FROM u.notifyTime) = :hour AND EXTRACT(MINUTE FROM u.notifyTime) = :minute")
     List<User> findUsersToNotify(@org.springframework.data.repository.query.Param("hour") int hour, @org.springframework.data.repository.query.Param("minute") int minute);
 }
+
