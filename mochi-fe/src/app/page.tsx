@@ -75,6 +75,7 @@ export default function Dashboard() {
 
   // Dialog controlled open states
   const [isExploreDeckDialogOpen, setIsExploreDeckDialogOpen] = useState(false);
+  const [isCreatingDeck, setIsCreatingDeck] = useState(false);
 
   // States for learning session inside explore tab
   const [viewingExploreDeck, setViewingExploreDeck] = useState<Deck | null>(null);
@@ -202,26 +203,45 @@ export default function Dashboard() {
 
   const handleCreateDeck = async (e: React.FormEvent, isPublicForced?: boolean) => {
     e.preventDefault();
-    if (!newDeckName) return;
+    if (!newDeckName.trim()) {
+      alert('Vui lòng nhập tên chủ đề!');
+      return;
+    }
 
+    setIsCreatingDeck(true);
     try {
+      const isPublic = isPublicForced !== undefined ? isPublicForced : newDeckPublic;
       const res: any = await api.post('/api/decks', {
-        name: newDeckName,
-        description: newDeckDesc,
+        name: newDeckName.trim(),
+        description: newDeckDesc.trim(),
         language: newDeckLang,
-        isPublic: isPublicForced !== undefined ? isPublicForced : newDeckPublic,
-        imageUrl: newDeckImageUrl || undefined
+        isPublic: isPublic,
+        imageUrl: newDeckImageUrl?.trim() || undefined
       });
-      if (res.success) {
+
+      if (res.success && res.data) {
+        // Cập nhật ngay vào danh sách hiển thị
+        if (isPublic) {
+          setPublicDecks(prev => [res.data, ...prev.filter(d => d.id !== res.data.id)]);
+        } else {
+          setDecks(prev => [res.data, ...prev.filter(d => d.id !== res.data.id)]);
+        }
+
         setNewDeckName('');
         setNewDeckDesc('');
         setNewDeckImageUrl('');
         setNewDeckPublic(false);
         setIsExploreDeckDialogOpen(false);
+        alert('Tạo chủ đề thành công! 🎉');
         fetchData();
+      } else {
+        alert(res.message || 'Không thể tạo chủ đề. Vui lòng thử lại!');
       }
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      console.error('Lỗi khi tạo chủ đề:', err);
+      alert(err?.message || 'Lỗi khi tạo chủ đề. Vui lòng kiểm tra lại kết nối!');
+    } finally {
+      setIsCreatingDeck(false);
     }
   };
 
@@ -1444,7 +1464,13 @@ export default function Dashboard() {
                                 </div>
                               </div>
                               <DialogFooter>
-                                <Button type="submit" className="bg-primary hover:bg-primary/95 text-white font-sans">Tạo ngay</Button>
+                                <Button 
+                                  type="submit" 
+                                  disabled={isCreatingDeck} 
+                                  className="bg-primary hover:bg-primary/95 text-white font-sans min-w-24"
+                                >
+                                  {isCreatingDeck ? 'Đang tạo...' : 'Tạo ngay'}
+                                </Button>
                               </DialogFooter>
                             </form>
                           </DialogContent>
