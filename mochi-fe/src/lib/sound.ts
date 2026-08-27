@@ -5,16 +5,18 @@
  * 3. Tự động dừng âm thanh cũ và giọng đọc cũ nếu người dùng thao tác liên tục.
  */
 
+const SOUND_VERSION = 'v2';
+
 const audioCache: { correct?: HTMLAudioElement; wrong?: HTMLAudioElement } = {};
 
 if (typeof window !== 'undefined') {
   try {
-    const correctAudio = new Audio('/sounds/correct.mp3');
+    const correctAudio = new Audio(`/sounds/correct.mp3?v=${SOUND_VERSION}`);
     correctAudio.preload = 'auto';
     correctAudio.volume = 0.85;
     audioCache.correct = correctAudio;
 
-    const wrongAudio = new Audio('/sounds/wrong.mp3');
+    const wrongAudio = new Audio(`/sounds/wrong.mp3?v=${SOUND_VERSION}`);
     wrongAudio.preload = 'auto';
     wrongAudio.volume = 0.85;
     audioCache.wrong = wrongAudio;
@@ -47,7 +49,7 @@ export const playSound = (type: 'correct' | 'wrong', onEnded?: () => void) => {
 
   let audio = audioCache[type];
   if (!audio) {
-    audio = new Audio(type === 'correct' ? '/sounds/correct.mp3' : '/sounds/wrong.mp3');
+    audio = new Audio(type === 'correct' ? `/sounds/correct.mp3?v=${SOUND_VERSION}` : `/sounds/wrong.mp3?v=${SOUND_VERSION}`);
     audio.preload = 'auto';
     audio.volume = 0.85;
     audioCache[type] = audio;
