@@ -31,6 +31,7 @@ interface CardType {
   exampleSentence?: string;
   pronunciation?: string;
   synonyms?: string;
+  imageUrl?: string;
 }
 
 const topicMetadata: Record<string, { vnName: string, icon: string, image: string }> = {
@@ -61,6 +62,7 @@ export default function Dashboard() {
   const [pronunciation, setPronunciation] = useState('');
   const [synonyms, setSynonyms] = useState('');
   const [example, setExample] = useState('');
+  const [cardImageUrl, setCardImageUrl] = useState('');
 
   // States for Admin editing card
   const [editingCard, setEditingCard] = useState<CardType | null>(null);
@@ -69,6 +71,7 @@ export default function Dashboard() {
   const [editPronunciation, setEditPronunciation] = useState('');
   const [editSynonyms, setEditSynonyms] = useState('');
   const [editExample, setEditExample] = useState('');
+  const [editCardImageUrl, setEditCardImageUrl] = useState('');
   const [isEditingCardDialogOpen, setIsEditingCardDialogOpen] = useState(false);
   const [isSavingCard, setIsSavingCard] = useState(false);
 
@@ -196,6 +199,7 @@ export default function Dashboard() {
             back: c.back,
             pronunciation: c.pronunciation || '',
             synonyms: c.synonyms || '',
+            imageUrl: c.imageUrl || '',
             exampleSentence: c.exampleSentence || ''
           })));
         }
@@ -288,6 +292,7 @@ export default function Dashboard() {
         back,
         pronunciation,
         synonyms,
+        imageUrl: cardImageUrl.trim() || undefined,
         exampleSentence: example
       });
       if (res.success) {
@@ -295,6 +300,7 @@ export default function Dashboard() {
         setBack('');
         setPronunciation('');
         setSynonyms('');
+        setCardImageUrl('');
         setExample('');
         // Reload cards for current deck
         const cardsRes: any = await api.get(`/api/decks/${currentDeck.id}/cards`);
@@ -314,6 +320,7 @@ export default function Dashboard() {
     setEditBack(card.back);
     setEditPronunciation(card.pronunciation || '');
     setEditSynonyms(card.synonyms || '');
+    setEditCardImageUrl(card.imageUrl || '');
     setEditExample(card.exampleSentence || '');
     setIsEditingCardDialogOpen(true);
   };
@@ -334,6 +341,7 @@ export default function Dashboard() {
         back: editBack,
         pronunciation: editPronunciation,
         synonyms: editSynonyms,
+        imageUrl: editCardImageUrl.trim() || undefined,
         exampleSentence: editExample,
       });
 
@@ -345,6 +353,7 @@ export default function Dashboard() {
           back: editBack,
           pronunciation: editPronunciation,
           synonyms: editSynonyms,
+          imageUrl: editCardImageUrl.trim() || undefined,
           exampleSentence: editExample,
         } : c));
 
@@ -355,6 +364,7 @@ export default function Dashboard() {
           back: editBack,
           pronunciation: editPronunciation,
           synonyms: editSynonyms,
+          imageUrl: editCardImageUrl.trim() || undefined,
           exampleSentence: editExample,
         } : c));
 
@@ -985,10 +995,10 @@ export default function Dashboard() {
                               </Button>
                             </div>
 
-                            {/* Ảnh đại diện chủ đề học tập */}
+                            {/* Ảnh đại diện từ vựng (Ưu tiên ảnh riêng của từ, nếu không có sẽ lấy ảnh của chủ đề) */}
                             <div className="w-64 h-48 mx-auto rounded-2xl overflow-hidden shadow-inner border border-border bg-muted flex items-center justify-center relative">
                               <img 
-                                src={viewingExploreDeck?.imageUrl || 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=300&auto=format&fit=crop&q=60'} 
+                                src={currentCard.imageUrl || viewingExploreDeck?.imageUrl || 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=300&auto=format&fit=crop&q=60'} 
                                 alt={currentCard.front} 
                                 className="w-full h-full object-cover opacity-90"
                               />
@@ -1223,10 +1233,10 @@ export default function Dashboard() {
                           <div className="w-full space-y-6 text-center animate-fade-in pb-10">
                             <h3 className="text-xl font-extrabold text-foreground">Điền từ vào chỗ trống</h3>
 
-                            {/* Ảnh đại diện */}
+                            {/* Ảnh đại diện từ vựng (Ưu tiên ảnh riêng của từ) */}
                             <div className="w-64 h-48 mx-auto rounded-2xl overflow-hidden shadow-inner border border-border bg-muted flex items-center justify-center relative">
                               <img 
-                                src={viewingExploreDeck?.imageUrl || 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=300&auto=format&fit=crop&q=60'} 
+                                src={currentCard.imageUrl || viewingExploreDeck?.imageUrl || 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=300&auto=format&fit=crop&q=60'} 
                                 alt={currentCard.front} 
                                 className="w-full h-full object-cover opacity-90"
                               />
@@ -1374,6 +1384,10 @@ export default function Dashboard() {
                           <Label htmlFor="synonyms" className="text-xs text-muted-foreground font-sans">Từ đồng nghĩa (Cách nhau bởi dấu phẩy ,)</Label>
                           <Input id="synonyms" value={synonyms} onChange={(e) => setSynonyms(e.target.value)} placeholder="Ví dụ: test, quiz, assessment" className="bg-background border-border h-9" />
                         </div>
+                        <div className="space-y-1.5 text-left">
+                          <Label htmlFor="card-image" className="text-xs text-muted-foreground font-sans">Link hình ảnh minh họa cho từ vựng (URL - Tùy chọn)</Label>
+                          <Input id="card-image" value={cardImageUrl} onChange={(e) => setCardImageUrl(e.target.value)} placeholder="https://... (để trống nếu dùng ảnh chủ đề)" className="bg-background border-border h-9" />
+                        </div>
                         <div className="flex justify-end">
                           <Button type="submit" size="sm" className="bg-primary hover:bg-primary/95 text-white font-sans">Thêm từ</Button>
                         </div>
@@ -1392,7 +1406,14 @@ export default function Dashboard() {
                       </div>
                       <div className="grid gap-3">
                         {deckCards.map((card) => (
-                          <div key={card.id} className="p-4 border border-border bg-card rounded-2xl flex items-center justify-between shadow-sm hover:border-primary/40 transition">
+                          <div key={card.id} className="p-4 border border-border bg-card rounded-2xl flex items-center justify-between shadow-sm hover:border-primary/40 transition gap-3">
+                            {card.imageUrl && (
+                              <img 
+                                src={card.imageUrl} 
+                                alt={card.front} 
+                                className="w-14 h-14 rounded-xl object-cover border border-border flex-shrink-0"
+                              />
+                            )}
                             <div className="space-y-1 text-left flex-1 pr-3">
                               <div className="flex items-center space-x-2.5">
                                 <span className="font-extrabold text-primary text-base">{card.front}</span>
@@ -1639,7 +1660,14 @@ export default function Dashboard() {
                   {learnedCards.length > 0 ? (
                     <div className="grid gap-3">
                       {learnedCards.map((card) => (
-                        <div key={card.id} className="p-4 border border-border bg-card rounded-2xl flex items-center justify-between shadow-sm hover:border-primary/40 transition">
+                        <div key={card.id} className="p-4 border border-border bg-card rounded-2xl flex items-center justify-between shadow-sm hover:border-primary/40 transition gap-3">
+                          {card.imageUrl && (
+                            <img 
+                              src={card.imageUrl} 
+                              alt={card.front} 
+                              className="w-14 h-14 rounded-xl object-cover border border-border flex-shrink-0"
+                            />
+                          )}
                           <div className="space-y-1 text-left flex-1 pr-3">
                             <div className="flex items-center space-x-2.5">
                               <span className="font-extrabold text-primary text-base">{card.front}</span>
@@ -1831,6 +1859,17 @@ export default function Dashboard() {
                 value={editSynonyms} 
                 onChange={(e) => setEditSynonyms(e.target.value)} 
                 placeholder="Ví dụ: protection, preservation, safeguard" 
+                className="bg-background border-border"
+              />
+            </div>
+
+            <div className="space-y-1.5 text-left">
+              <Label htmlFor="edit-image" className="text-xs font-bold text-foreground">Link hình ảnh minh họa (URL - Tùy chọn)</Label>
+              <Input 
+                id="edit-image" 
+                value={editCardImageUrl} 
+                onChange={(e) => setEditCardImageUrl(e.target.value)} 
+                placeholder="https://... (để trống nếu dùng ảnh chủ đề)" 
                 className="bg-background border-border"
               />
             </div>

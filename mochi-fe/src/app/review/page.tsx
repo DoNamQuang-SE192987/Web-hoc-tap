@@ -17,6 +17,7 @@ interface CardProgressType {
   exampleSentence?: string;
   pronunciation?: string;
   synonyms?: string;
+  imageUrl?: string;
 }
 
 export default function ReviewPage() {
@@ -205,6 +206,17 @@ export default function ReviewPage() {
             <span className="text-xs text-primary font-bold uppercase tracking-wider bg-primary/10 px-3.5 py-1 rounded-full border border-primary/20">
               Ý nghĩa tiếng Việt
             </span>
+
+            {/* Hình ảnh minh họa cho từ vựng (nếu có) */}
+            {currentCard.imageUrl && (
+              <div className="w-48 h-36 mx-auto rounded-2xl overflow-hidden shadow-inner border border-border bg-muted flex items-center justify-center">
+                <img 
+                  src={currentCard.imageUrl} 
+                  alt={currentCard.front} 
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            )}
 
             {/* Nghĩa tiếng Việt */}
             <h2 className="text-3xl md:text-4xl font-black text-foreground tracking-wide">
