@@ -30,6 +30,7 @@ interface CardType {
   back: string;
   exampleSentence?: string;
   pronunciation?: string;
+  synonyms?: string;
 }
 
 const topicMetadata: Record<string, { vnName: string, icon: string, image: string }> = {
@@ -58,6 +59,7 @@ export default function Dashboard() {
   const [front, setFront] = useState('');
   const [back, setBack] = useState('');
   const [pronunciation, setPronunciation] = useState('');
+  const [synonyms, setSynonyms] = useState('');
   const [example, setExample] = useState('');
 
   // States for Admin editing card
@@ -65,6 +67,7 @@ export default function Dashboard() {
   const [editFront, setEditFront] = useState('');
   const [editBack, setEditBack] = useState('');
   const [editPronunciation, setEditPronunciation] = useState('');
+  const [editSynonyms, setEditSynonyms] = useState('');
   const [editExample, setEditExample] = useState('');
   const [isEditingCardDialogOpen, setIsEditingCardDialogOpen] = useState(false);
   const [isSavingCard, setIsSavingCard] = useState(false);
@@ -192,6 +195,7 @@ export default function Dashboard() {
             front: c.front,
             back: c.back,
             pronunciation: c.pronunciation || '',
+            synonyms: c.synonyms || '',
             exampleSentence: c.exampleSentence || ''
           })));
         }
@@ -283,12 +287,14 @@ export default function Dashboard() {
         front,
         back,
         pronunciation,
+        synonyms,
         exampleSentence: example
       });
       if (res.success) {
         setFront('');
         setBack('');
         setPronunciation('');
+        setSynonyms('');
         setExample('');
         // Reload cards for current deck
         const cardsRes: any = await api.get(`/api/decks/${currentDeck.id}/cards`);
@@ -307,6 +313,7 @@ export default function Dashboard() {
     setEditFront(card.front);
     setEditBack(card.back);
     setEditPronunciation(card.pronunciation || '');
+    setEditSynonyms(card.synonyms || '');
     setEditExample(card.exampleSentence || '');
     setIsEditingCardDialogOpen(true);
   };
@@ -326,6 +333,7 @@ export default function Dashboard() {
         front: editFront,
         back: editBack,
         pronunciation: editPronunciation,
+        synonyms: editSynonyms,
         exampleSentence: editExample,
       });
 
@@ -336,6 +344,7 @@ export default function Dashboard() {
           front: editFront,
           back: editBack,
           pronunciation: editPronunciation,
+          synonyms: editSynonyms,
           exampleSentence: editExample,
         } : c));
 
@@ -345,6 +354,7 @@ export default function Dashboard() {
           front: editFront,
           back: editBack,
           pronunciation: editPronunciation,
+          synonyms: editSynonyms,
           exampleSentence: editExample,
         } : c));
 
@@ -453,8 +463,15 @@ export default function Dashboard() {
     e.preventDefault();
     if (!dictationInput.trim()) return;
 
-    const currentWord = deckCards[learningIndex]?.front || '';
-    const isCorrect = dictationInput.trim().toLowerCase() === currentWord.toLowerCase();
+    const currentCardObj = deckCards[learningIndex];
+    const currentWord = currentCardObj?.front || '';
+    const cleanInput = dictationInput.trim().toLowerCase();
+    
+    // Kiểm tra khớp từ chính HOẶC bất kỳ từ đồng nghĩa nào
+    const synonymList = currentCardObj?.synonyms 
+      ? currentCardObj.synonyms.split(/[,;]/).map(s => s.trim().toLowerCase()).filter(Boolean)
+      : [];
+    const isCorrect = cleanInput === currentWord.toLowerCase() || synonymList.includes(cleanInput);
     
     setDictationCorrect(isCorrect);
     setDictationSubmitted(true);
@@ -476,8 +493,15 @@ export default function Dashboard() {
     e.preventDefault();
     if (!fillBlankInput.trim()) return;
 
-    const currentWord = deckCards[learningIndex]?.front || '';
-    const isCorrect = fillBlankInput.trim().toLowerCase() === currentWord.toLowerCase();
+    const currentCardObj = deckCards[learningIndex];
+    const currentWord = currentCardObj?.front || '';
+    const cleanInput = fillBlankInput.trim().toLowerCase();
+
+    // Kiểm tra khớp từ chính HOẶC bất kỳ từ đồng nghĩa nào
+    const synonymList = currentCardObj?.synonyms 
+      ? currentCardObj.synonyms.split(/[,;]/).map(s => s.trim().toLowerCase()).filter(Boolean)
+      : [];
+    const isCorrect = cleanInput === currentWord.toLowerCase() || synonymList.includes(cleanInput);
 
     setFillBlankCorrect(isCorrect);
     setFillBlankSubmitted(true);
@@ -1031,9 +1055,39 @@ export default function Dashboard() {
                               )}
                             </div>
 
-                            <div className="py-6 px-8 bg-muted/40 border border-border rounded-2xl max-w-sm mx-auto">
-                              <span className="text-xs uppercase font-bold text-muted-foreground tracking-wider block mb-1">Ý nghĩa</span>
-                              <p className="text-xl font-bold text-foreground">{currentCard.back}</p>
+                            <div className="py-6 px-8 bg-muted/40 border border-border rounded-2xl max-w-sm mx-auto space-y-3">
+                              <div>
+                                <span className="text-xs uppercase font-bold text-muted-foreground tracking-wider block mb-1">Ý nghĩa</span>
+                                <p className="text-xl font-bold text-foreground">{currentCard.back}</p>
+                              </div>
+
+                              {/* Huy hiệu Từ đồng nghĩa */}
+                              {currentCard.synonyms && (
+                                <div className="pt-2 border-t border-border/50">
+                                  <span className="text-xs font-bold text-muted-foreground block mb-1.5">Từ đồng nghĩa:</span>
+                                  <div className="flex flex-wrap items-center justify-center gap-1.5">
+                                    {currentCard.synonyms.split(/[,;]/).map((syn, idx) => {
+                                      const cleanSyn = syn.trim();
+                                      if (!cleanSyn) return null;
+                                      return (
+                                        <button
+                                          key={idx}
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            speakWord(cleanSyn);
+                                          }}
+                                          className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-600 hover:bg-indigo-500/20 border border-indigo-500/20 transition cursor-pointer"
+                                          title={`Nghe phát âm: ${cleanSyn}`}
+                                        >
+                                          <span>{cleanSyn}</span>
+                                          <Volume2 className="h-3 w-3 opacity-75" />
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
                             </div>
 
                             <div className="pt-4 space-y-3 w-full max-w-xs mx-auto">
@@ -1316,6 +1370,10 @@ export default function Dashboard() {
                             <Input id="example" value={example} onChange={(e) => setExample(e.target.value)} placeholder="He failed the examination." className="bg-background border-border h-9" />
                           </div>
                         </div>
+                        <div className="space-y-1.5 text-left">
+                          <Label htmlFor="synonyms" className="text-xs text-muted-foreground font-sans">Từ đồng nghĩa (Cách nhau bởi dấu phẩy ,)</Label>
+                          <Input id="synonyms" value={synonyms} onChange={(e) => setSynonyms(e.target.value)} placeholder="Ví dụ: test, quiz, assessment" className="bg-background border-border h-9" />
+                        </div>
                         <div className="flex justify-end">
                           <Button type="submit" size="sm" className="bg-primary hover:bg-primary/95 text-white font-sans">Thêm từ</Button>
                         </div>
@@ -1353,6 +1411,30 @@ export default function Dashboard() {
                               <p className="text-sm font-bold text-foreground">{card.back}</p>
                               {card.exampleSentence && (
                                 <p className="text-xs italic text-muted-foreground">VD: {card.exampleSentence}</p>
+                              )}
+                              {card.synonyms && (
+                                <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                                  <span className="text-[11px] font-bold text-muted-foreground">Đồng nghĩa:</span>
+                                  {card.synonyms.split(/[,;]/).map((syn, idx) => {
+                                    const cleanSyn = syn.trim();
+                                    if (!cleanSyn) return null;
+                                    return (
+                                      <button
+                                        key={idx}
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          speakWord(cleanSyn);
+                                        }}
+                                        className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-600 hover:bg-indigo-500/20 border border-indigo-500/20 transition cursor-pointer"
+                                        title={`Nghe phát âm: ${cleanSyn}`}
+                                      >
+                                        <span>{cleanSyn}</span>
+                                        <Volume2 className="h-3 w-3 opacity-75" />
+                                      </button>
+                                    );
+                                  })}
+                                </div>
                               )}
                             </div>
 
@@ -1577,6 +1659,30 @@ export default function Dashboard() {
                             {card.exampleSentence && (
                               <p className="text-xs italic text-muted-foreground">VD: {card.exampleSentence}</p>
                             )}
+                            {card.synonyms && (
+                              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                                <span className="text-[11px] font-bold text-muted-foreground">Đồng nghĩa:</span>
+                                {card.synonyms.split(/[,;]/).map((syn, idx) => {
+                                  const cleanSyn = syn.trim();
+                                  if (!cleanSyn) return null;
+                                  return (
+                                    <button
+                                      key={idx}
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        speakWord(cleanSyn);
+                                      }}
+                                      className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-600 hover:bg-indigo-500/20 border border-indigo-500/20 transition cursor-pointer"
+                                      title={`Nghe phát âm: ${cleanSyn}`}
+                                    >
+                                      <span>{cleanSyn}</span>
+                                      <Volume2 className="h-3 w-3 opacity-75" />
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
                           </div>
 
                           {/* Nút chỉnh sửa / xóa dành cho Admin */}
@@ -1716,6 +1822,17 @@ export default function Dashboard() {
                   className="bg-background border-border"
                 />
               </div>
+            </div>
+
+            <div className="space-y-1.5 text-left">
+              <Label htmlFor="edit-synonyms" className="text-xs font-bold text-foreground">Từ đồng nghĩa (Cách nhau bởi dấu phẩy ,)</Label>
+              <Input 
+                id="edit-synonyms" 
+                value={editSynonyms} 
+                onChange={(e) => setEditSynonyms(e.target.value)} 
+                placeholder="Ví dụ: protection, preservation, safeguard" 
+                className="bg-background border-border"
+              />
             </div>
 
             <DialogFooter className="pt-3">

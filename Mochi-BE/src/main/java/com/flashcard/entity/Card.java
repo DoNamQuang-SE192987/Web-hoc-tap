@@ -35,6 +35,9 @@ public class Card {
 
     private String pronunciation;
 
+    @Column(columnDefinition = "TEXT")
+    private String synonyms;
+
     @Column(name = "image_url")
     private String imageUrl;
 

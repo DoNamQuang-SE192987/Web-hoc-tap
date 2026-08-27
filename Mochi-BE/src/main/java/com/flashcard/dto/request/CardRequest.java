@@ -16,5 +16,7 @@ public class CardRequest {
 
     private String pronunciation;
 
+    private String synonyms;
+
     private String imageUrl;
 }

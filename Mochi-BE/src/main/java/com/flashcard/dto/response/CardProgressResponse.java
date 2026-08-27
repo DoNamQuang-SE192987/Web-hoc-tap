@@ -20,6 +20,7 @@ public class CardProgressResponse {
     private String back;
     private String exampleSentence;
     private String pronunciation;
+    private String synonyms;
     private String imageUrl;
     private Integer interval;
     private Integer repetition;

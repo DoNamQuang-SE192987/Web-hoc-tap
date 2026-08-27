@@ -59,6 +59,7 @@ public class CardService {
                 .back(request.getBack())
                 .exampleSentence(request.getExampleSentence())
                 .pronunciation(request.getPronunciation())
+                .synonyms(request.getSynonyms())
                 .imageUrl(request.getImageUrl())
                 .build();
 
@@ -90,6 +91,7 @@ public class CardService {
         card.setFront(request.getFront());
         card.setBack(request.getBack());
         card.setPronunciation(request.getPronunciation());
+        card.setSynonyms(request.getSynonyms());
         card.setExampleSentence(request.getExampleSentence());
         if (request.getImageUrl() != null) {
             card.setImageUrl(request.getImageUrl());
@@ -146,6 +148,7 @@ public class CardService {
                 .back(card.getBack())
                 .exampleSentence(card.getExampleSentence())
                 .pronunciation(card.getPronunciation())
+                .synonyms(card.getSynonyms())
                 .imageUrl(card.getImageUrl())
                 .createdAt(card.getCreatedAt())
                 .build();

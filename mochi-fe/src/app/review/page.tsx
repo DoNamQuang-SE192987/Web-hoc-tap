@@ -16,6 +16,7 @@ interface CardProgressType {
   back: string;
   exampleSentence?: string;
   pronunciation?: string;
+  synonyms?: string;
 }
 
 export default function ReviewPage() {
@@ -72,7 +73,12 @@ export default function ReviewPage() {
     const currentCard = cards[currentIndex];
     const cleanTyped = typedWord.trim().toLowerCase();
     const cleanActual = currentCard.front.trim().toLowerCase();
-    const correct = cleanTyped === cleanActual;
+    
+    // Kiểm tra khớp từ chính HOẶC bất kỳ từ đồng nghĩa nào
+    const synonymList = currentCard.synonyms 
+      ? currentCard.synonyms.split(/[,;]/).map(s => s.trim().toLowerCase()).filter(Boolean)
+      : [];
+    const correct = cleanTyped === cleanActual || synonymList.includes(cleanTyped);
     
     setIsCorrect(correct);
     setIsChecked(true);
@@ -216,7 +222,7 @@ export default function ReviewPage() {
               </div>
             )}
 
-            {/* Hiển thị từ tiếng Anh gốc và phiên âm SAU KHI bấm Kiểm tra */}
+            {/* Hiển thị từ tiếng Anh gốc, phiên âm và từ đồng nghĩa SAU KHI bấm Kiểm tra */}
             {isChecked && (
               <div className="w-full pt-4 border-t border-border animate-fade-in space-y-3">
                 <div className="flex items-center justify-center space-x-3">
@@ -237,6 +243,32 @@ export default function ReviewPage() {
                   <p className="text-xs font-mono text-muted-foreground">
                     {currentCard.pronunciation}
                   </p>
+                )}
+
+                {/* Huy hiệu Từ đồng nghĩa với phát âm riêng */}
+                {currentCard.synonyms && (
+                  <div className="flex flex-wrap items-center justify-center gap-1.5 pt-1">
+                    <span className="text-[11px] font-bold text-muted-foreground">Đồng nghĩa:</span>
+                    {currentCard.synonyms.split(/[,;]/).map((syn, idx) => {
+                      const cleanSyn = syn.trim();
+                      if (!cleanSyn) return null;
+                      return (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            speakWord(cleanSyn);
+                          }}
+                          className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-600 hover:bg-indigo-500/20 border border-indigo-500/20 transition cursor-pointer"
+                          title={`Nghe phát âm: ${cleanSyn}`}
+                        >
+                          <span>{cleanSyn}</span>
+                          <Volume2 className="h-3 w-3 opacity-75" />
+                        </button>
+                      );
+                    })}
+                  </div>
                 )}
               </div>
             )}

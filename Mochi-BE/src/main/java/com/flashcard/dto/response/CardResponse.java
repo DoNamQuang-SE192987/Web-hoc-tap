@@ -19,6 +19,7 @@ public class CardResponse {
     private String back;
     private String exampleSentence;
     private String pronunciation;
+    private String synonyms;
     private String imageUrl;
     private LocalDateTime createdAt;
 }
